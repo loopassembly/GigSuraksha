@@ -1,0 +1,72 @@
+feature,importance_mean,importance_std
+severe_pollution_shift_hours_current_week,2.814338,0.0
+disrupted_hours_current_week,2.507596,0.0
+recent_disruption_hours_1w,2.507596,0.0
+recent_disruption_hours_2w,1.577618,0.0
+shift_type__evening_rush,1.279023,0.0
+shift_hours_in_week,1.264614,0.0
+average_shift_pm25_current_week,1.263814,0.0
+shift_type__late_night,1.082109,0.0
+severe_wind_shift_hours_current_week,0.930839,0.0
+shift_exposure_loading,0.852319,0.0
+lagged_disruption_hours_2w,0.795173,0.0
+city_disruption_hours_last_14d,0.734411,0.0
+severe_pollution_hours_last_7d,0.728023,0.0
+average_pm2_5_last_7d,0.715913,0.0
+zone_aqi_sensitivity_score,0.709508,0.0
+city__Bengaluru,0.587269,0.0
+city_disruption_hours_last_7d,0.531517,0.0
+average_temperature_last_7d,0.499689,0.0
+max_shift_pm25_current_week,0.473075,0.0
+lagged_disruption_hours_1w,0.465877,0.0
+city__Gurugram,0.443162,0.0
+city__Mumbai,0.407151,0.0
+recent_heat_trend,0.39974,0.0
+zone__Cyber City,0.370996,0.0
+zone__Whitefield,0.353196,0.0
+zone__Bandra West,0.340353,0.0
+week_of_year,0.284689,0.0
+temperature_volatility_last_7d,0.254743,0.0
+zone_baseline_risk_score,0.248861,0.0
+zone__Koramangala,0.232837,0.0
+city__Hyderabad,0.231698,0.0
+month,0.227916,0.0
+max_hourly_rain_last_7d,0.222698,0.0
+heat_stress_shift_hours_current_week,0.195867,0.0
+zone__Powai,0.167644,0.0
+city__Pune,0.166033,0.0
+zone__Koregaon Park,0.166033,0.0
+zone__Anna Nagar,0.145496,0.0
+max_wind_gust_last_7d,0.144998,0.0
+zone__HSR Layout,0.143,0.0
+average_shift_precipitation_current_week,0.14214,0.0
+zone__Indiranagar,0.141763,0.0
+shift_type__afternoon,0.133695,0.0
+monsoon_flag,0.128146,0.0
+zone__Gachibowli,0.116479,0.0
+zone__Banjara Hills,0.115219,0.0
+flood_proxy_shift_hours_current_week,0.109254,0.0
+pm25_volatility_last_7d,0.10627,0.0
+recent_precip_trend,0.100964,0.0
+zone__Andheri East,0.100847,0.0
+city__Chennai,0.09777,0.0
+zone_access_risk_score,0.096647,0.0
+heavy_rain_shift_hours_current_week,0.092696,0.0
+recent_pm25_trend,0.088028,0.0
+precipitation_volatility_last_7d,0.078922,0.0
+zone__Gurgaon Sec 49,0.072167,0.0
+city__Kolkata,0.071717,0.0
+zone__Salt Lake,0.071717,0.0
+shift_type__morning_rush,0.063219,0.0
+max_temperature_last_7d,0.051923,0.0
+zone__Adyar,0.047726,0.0
+heat_stress_hours_last_7d,0.045888,0.0
+cumulative_rain_last_14d,0.045212,0.0
+access_proxy_shift_hours_current_week,0.041187,0.0
+zone__Rohini,0.037919,0.0
+city__Delhi,0.0348,0.0
+heavy_rain_hours_last_7d,0.034224,0.0
+zone_flood_prone_score,0.034061,0.0
+safe_zone_discount_hint,0.012589,0.0
+total_precip_last_7d,0.003596,0.0
+zone__Dwarka,0.003119,0.0

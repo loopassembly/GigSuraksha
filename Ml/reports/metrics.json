@@ -1,0 +1,223 @@
+{
+  "model_version": "weekly-disruption-risk-v1",
+  "selected_model": "portable_ridge_regression",
+  "candidate_metrics": {
+    "portable_ridge_regression": {
+      "mae": 2.8871,
+      "rmse": 4.5323,
+      "r2": 0.7313,
+      "risk_band_accuracy": 0.7879
+    }
+  },
+  "feature_columns": [
+    "city",
+    "zone",
+    "shift_type",
+    "shift_hours_in_week",
+    "disrupted_hours_current_week",
+    "heavy_rain_shift_hours_current_week",
+    "flood_proxy_shift_hours_current_week",
+    "heat_stress_shift_hours_current_week",
+    "severe_pollution_shift_hours_current_week",
+    "access_proxy_shift_hours_current_week",
+    "severe_wind_shift_hours_current_week",
+    "average_shift_precipitation_current_week",
+    "average_shift_pm25_current_week",
+    "max_shift_pm25_current_week",
+    "month",
+    "week_of_year",
+    "total_precip_last_7d",
+    "max_hourly_rain_last_7d",
+    "heavy_rain_hours_last_7d",
+    "average_temperature_last_7d",
+    "max_temperature_last_7d",
+    "heat_stress_hours_last_7d",
+    "average_pm2_5_last_7d",
+    "severe_pollution_hours_last_7d",
+    "precipitation_volatility_last_7d",
+    "temperature_volatility_last_7d",
+    "pm25_volatility_last_7d",
+    "max_wind_gust_last_7d",
+    "city_disruption_hours_last_7d",
+    "cumulative_rain_last_14d",
+    "city_disruption_hours_last_14d",
+    "recent_precip_trend",
+    "recent_pm25_trend",
+    "recent_heat_trend",
+    "monsoon_flag",
+    "lagged_disruption_hours_1w",
+    "lagged_disruption_hours_2w",
+    "recent_disruption_hours_1w",
+    "recent_disruption_hours_2w",
+    "zone_flood_prone_score",
+    "zone_aqi_sensitivity_score",
+    "zone_access_risk_score",
+    "safe_zone_discount_hint",
+    "shift_exposure_loading",
+    "zone_baseline_risk_score"
+  ],
+  "categorical_features": [
+    "city",
+    "zone",
+    "shift_type"
+  ],
+  "numeric_features": [
+    "shift_hours_in_week",
+    "disrupted_hours_current_week",
+    "heavy_rain_shift_hours_current_week",
+    "flood_proxy_shift_hours_current_week",
+    "heat_stress_shift_hours_current_week",
+    "severe_pollution_shift_hours_current_week",
+    "access_proxy_shift_hours_current_week",
+    "severe_wind_shift_hours_current_week",
+    "average_shift_precipitation_current_week",
+    "average_shift_pm25_current_week",
+    "max_shift_pm25_current_week",
+    "month",
+    "week_of_year",
+    "total_precip_last_7d",
+    "max_hourly_rain_last_7d",
+    "heavy_rain_hours_last_7d",
+    "average_temperature_last_7d",
+    "max_temperature_last_7d",
+    "heat_stress_hours_last_7d",
+    "average_pm2_5_last_7d",
+    "severe_pollution_hours_last_7d",
+    "precipitation_volatility_last_7d",
+    "temperature_volatility_last_7d",
+    "pm25_volatility_last_7d",
+    "max_wind_gust_last_7d",
+    "city_disruption_hours_last_7d",
+    "cumulative_rain_last_14d",
+    "city_disruption_hours_last_14d",
+    "recent_precip_trend",
+    "recent_pm25_trend",
+    "recent_heat_trend",
+    "monsoon_flag",
+    "lagged_disruption_hours_1w",
+    "lagged_disruption_hours_2w",
+    "recent_disruption_hours_1w",
+    "recent_disruption_hours_2w",
+    "zone_flood_prone_score",
+    "zone_aqi_sensitivity_score",
+    "zone_access_risk_score",
+    "safe_zone_discount_hint",
+    "shift_exposure_loading",
+    "zone_baseline_risk_score"
+  ],
+  "training_window": {
+    "train_start": "2022-12-26",
+    "train_end": "2025-07-28",
+    "validation_start": "2025-08-04",
+    "validation_end": "2026-03-16"
+  },
+  "row_counts": {
+    "train_rows": 9248,
+    "validation_rows": 2244,
+    "total_rows": 11492
+  },
+  "feature_defaults": {
+    "city": "Bengaluru",
+    "zone": "Adyar",
+    "shift_type": "afternoon",
+    "shift_hours_in_week": 28.0,
+    "disrupted_hours_current_week": 0.0,
+    "heavy_rain_shift_hours_current_week": 0.0,
+    "flood_proxy_shift_hours_current_week": 0.0,
+    "heat_stress_shift_hours_current_week": 0.0,
+    "severe_pollution_shift_hours_current_week": 0.0,
+    "access_proxy_shift_hours_current_week": 0.0,
+    "severe_wind_shift_hours_current_week": 0.0,
+    "average_shift_precipitation_current_week": 0.0036,
+    "average_shift_pm25_current_week": 30.6964,
+    "max_shift_pm25_current_week": 49.1,
+    "month": 6.0,
+    "week_of_year": 23.0,
+    "total_precip_last_7d": 4.25,
+    "max_hourly_rain_last_7d": 1.2,
+    "heavy_rain_hours_last_7d": 0.0,
+    "average_temperature_last_7d": 26.12295,
+    "max_temperature_last_7d": 32.3,
+    "heat_stress_hours_last_7d": 0.0,
+    "average_pm2_5_last_7d": 31.37945,
+    "severe_pollution_hours_last_7d": 0.0,
+    "precipitation_volatility_last_7d": 0.1245,
+    "temperature_volatility_last_7d": 3.4099,
+    "pm25_volatility_last_7d": 10.8504,
+    "max_wind_gust_last_7d": 43.2,
+    "city_disruption_hours_last_7d": 2.0,
+    "cumulative_rain_last_14d": 14.75,
+    "city_disruption_hours_last_14d": 9.0,
+    "recent_precip_trend": 0.0,
+    "recent_pm25_trend": -0.5649,
+    "recent_heat_trend": 0.0,
+    "monsoon_flag": 0.0,
+    "lagged_disruption_hours_1w": 0.0,
+    "lagged_disruption_hours_2w": 0.0,
+    "recent_disruption_hours_1w": 0.0,
+    "recent_disruption_hours_2w": 0.0,
+    "zone_flood_prone_score": 0.5,
+    "zone_aqi_sensitivity_score": 0.36,
+    "zone_access_risk_score": 0.43,
+    "safe_zone_discount_hint": 2.0,
+    "shift_exposure_loading": 4.0,
+    "zone_baseline_risk_score": 0.4645
+  },
+  "top_global_features": [
+    {
+      "feature": "severe_pollution_shift_hours_current_week",
+      "importance_mean": 2.814338,
+      "importance_std": 0.0
+    },
+    {
+      "feature": "disrupted_hours_current_week",
+      "importance_mean": 2.507596,
+      "importance_std": 0.0
+    },
+    {
+      "feature": "recent_disruption_hours_1w",
+      "importance_mean": 2.507596,
+      "importance_std": 0.0
+    },
+    {
+      "feature": "recent_disruption_hours_2w",
+      "importance_mean": 1.577618,
+      "importance_std": 0.0
+    },
+    {
+      "feature": "shift_type__evening_rush",
+      "importance_mean": 1.279023,
+      "importance_std": 0.0
+    },
+    {
+      "feature": "shift_hours_in_week",
+      "importance_mean": 1.264614,
+      "importance_std": 0.0
+    },
+    {
+      "feature": "average_shift_pm25_current_week",
+      "importance_mean": 1.263814,
+      "importance_std": 0.0
+    },
+    {
+      "feature": "shift_type__late_night",
+      "importance_mean": 1.082109,
+      "importance_std": 0.0
+    },
+    {
+      "feature": "severe_wind_shift_hours_current_week",
+      "importance_mean": 0.930839,
+      "importance_std": 0.0
+    },
+    {
+      "feature": "shift_exposure_loading",
+      "importance_mean": 0.852319,
+      "importance_std": 0.0
+    }
+  ],
+  "training_runtime_note": "Portable stdlib fallback used because compiled scientific Python packages were blocked by local macOS code-signing policy in this environment.",
+  "evaluation_artifacts": {
+    "validation_predictions": "/Users/loopassembly/Desktop/GigSuraksha/Ml/reports/validation_predictions.csv",
+    "actual_vs_predicted_plot": "/Users/loopassembly/Desktop/GigSuraksha/Ml/reports/actual_vs_predicted.svg"
+  }
+}
