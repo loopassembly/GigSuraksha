@@ -1,229 +1,308 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import Card, { CardHeader } from '@/components/Card';
 import Badge from '@/components/Badge';
 import Button from '@/components/Button';
-import { SAMPLE_POLICY, SAMPLE_DISRUPTIONS } from '@/lib/mock-data';
-import { DISRUPTION_TYPE_INFO, SEVERITY_CONFIG } from '@/lib/constants';
-import { calculatePayout, calculateShiftOverlap, formatCurrency } from '@/lib/calculations';
+import { ApiError, getWorkerClaims } from '@/lib/api';
 import {
-  CheckCircle,
-  XCircle,
+  describeValidationChecks,
+  findEventForClaim,
+  formatCurrencyValue,
+  formatDateTime,
+  formatNumber,
+  getClaimStatusBadgeVariant,
+  getEventInfo,
+} from '@/lib/backend-helpers';
+import { getEvent, getPolicy, getWorker } from '@/lib/store';
+import type { BackendClaim, BackendEvent, BackendPolicy, StoredWorker } from '@/lib/types';
+import {
   AlertTriangle,
-  Shield,
   ArrowRight,
+  CheckCircle,
   FileText,
+  Shield,
+  XCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ClaimPage() {
-  const policy = SAMPLE_POLICY;
-  const event = SAMPLE_DISRUPTIONS[0]; // Heavy rain event
-  const info = DISRUPTION_TYPE_INFO[event.type];
-  const sevConfig = SEVERITY_CONFIG[event.severity];
+  const [worker, setWorker] = useState<StoredWorker | null>(null);
+  const [policy, setPolicy] = useState<BackendPolicy | null>(null);
+  const [event, setEvent] = useState<BackendEvent | null>(null);
+  const [claims, setClaims] = useState<BackendClaim[]>([]);
+  const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Calculate shift overlap (event starts at 18:30, 3 hours)
-  const shiftOverlap = calculateShiftOverlap(18.5, event.durationHours, policy.shifts);
-  const payout = calculatePayout(
-    policy.protectedHourlyIncome,
-    shiftOverlap,
-    event.severity,
-    policy.coverageTier.maxWeeklyPayout
-  );
+  useEffect(() => {
+    setWorker(getWorker());
+    setPolicy(getPolicy());
+    setEvent(getEvent()?.event ?? null);
+    setIsReady(true);
+  }, []);
 
-  const validationChecks = [
-    {
-      id: 'zone',
-      label: 'Zone Match',
-      description: `Event zone (${event.zone}) matches policy zone (${policy.zone.name})`,
-      passed: true,
-    },
-    {
-      id: 'shift',
-      label: 'Shift Overlap',
-      description: `Event overlaps with Evening Rush shift by ${shiftOverlap} hours`,
-      passed: shiftOverlap > 0,
-    },
-    {
-      id: 'duplicate',
-      label: 'Duplicate Check',
-      description: 'No existing claim for this event and time period',
-      passed: true,
-    },
-    {
-      id: 'event',
-      label: 'Event Validation',
-      description: `Verified via ${event.dataSource}`,
-      passed: true,
-    },
-    {
-      id: 'anomaly',
-      label: 'Anomaly Score',
-      description: 'ML anomaly score: 0.12 (below 0.60 threshold)',
-      passed: true,
-    },
-  ];
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+    const workerId = worker?.worker_id;
+    if (!workerId) {
+      setIsLoading(false);
+      return;
+    }
+    const stableWorkerId = workerId;
 
-  const allPassed = validationChecks.every((c) => c.passed);
+    let cancelled = false;
+
+    async function loadClaims() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await getWorkerClaims(stableWorkerId);
+        if (cancelled) {
+          return;
+        }
+        setClaims(response);
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
+        if (requestError instanceof ApiError) {
+          setError(requestError.detail || requestError.message);
+        } else {
+          setError('Unable to load claim history right now.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadClaims();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, worker]);
+
+  const latestClaim =
+    [...claims].sort(
+      (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+    )[0] ?? null;
+
+  const linkedEvent = findEventForClaim(event, latestClaim);
+  const eventInfo = latestClaim ? getEventInfo(latestClaim.event_type) : null;
+  const validationChecks = latestClaim ? describeValidationChecks(latestClaim.validation_checks, latestClaim) : [];
+  const allPassed = validationChecks.every((check) => check.passed);
 
   return (
     <>
       <Header />
       <main className="flex-1 max-w-4xl mx-auto px-4 py-6 sm:py-10 w-full">
-        <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Claim Preview</h1>
-          <p className="text-[14px] text-text-secondary mt-1">
-            Automated claim assessment for disruption event {event.id}
-          </p>
-        </div>
+        {isLoading ? (
+          <ClaimSkeleton />
+        ) : !worker ? (
+          <EmptyState
+            title="Register a Worker First"
+            description="Claim history depends on the worker profile stored during onboarding."
+            href="/onboarding"
+            cta="Go to Onboarding"
+          />
+        ) : !latestClaim ? (
+          <EmptyState
+            title="No Claims Yet"
+            description="Trigger a disruption simulation after activating a policy to create and review live claims here."
+            href="/simulate"
+            cta="Try Simulation"
+          />
+        ) : (
+          <>
+            <div className="mb-6">
+              <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Claim Preview</h1>
+              <p className="text-[14px] text-text-secondary mt-1">
+                Latest automated claim assessment for worker {worker.name}
+              </p>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            {/* Event Details */}
-            <Card padding="lg">
-              <CardHeader
-                title="Triggering Event"
-                action={
-                  <Badge variant={event.severity === 'severe' ? 'danger' : event.severity === 'high' ? 'warning' : 'muted'}>
-                    {sevConfig.label}
-                  </Badge>
-                }
-              />
-              <div className="p-4 rounded-lg bg-background border border-border mb-4">
-                <p className="text-[14px] font-semibold text-text-primary">{info.label}</p>
-                <p className="text-[13px] text-text-secondary mt-1">{event.description}</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 text-[12px]">
-                  <div>
-                    <span className="text-text-muted">Zone</span>
-                    <p className="font-medium text-text-primary">{event.zone}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Duration</span>
-                    <p className="font-medium text-text-primary">{event.durationHours}h</p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Time</span>
-                    <p className="font-medium text-text-primary">6:30 PM – 9:30 PM</p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Data Source</span>
-                    <p className="font-medium text-text-primary">{event.dataSource}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Linked Policy */}
-              <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                <Shield className="w-4 h-4 text-primary flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-text-primary">{policy.id}</p>
-                  <p className="text-[12px] text-text-secondary">{policy.coverageTier.name} Plan — {policy.weekLabel}</p>
-                </div>
-                <Badge variant="success">Active</Badge>
-              </div>
-            </Card>
-
-            {/* Validation Checks */}
-            <Card padding="lg">
-              <CardHeader
-                title="Validation Checks"
-                subtitle="Automated verification pipeline"
-                action={
-                  allPassed ? (
-                    <Badge variant="success">All Passed</Badge>
-                  ) : (
-                    <Badge variant="danger">Failed</Badge>
-                  )
-                }
-              />
-              <div className="space-y-2">
-                {validationChecks.map((check) => (
-                  <div
-                    key={check.id}
-                    className={`flex items-start gap-3 p-3 rounded-lg border ${
-                      check.passed ? 'border-border bg-surface' : 'border-danger/30 bg-danger-light'
-                    }`}
-                  >
-                    {check.passed ? (
-                      <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <XCircle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
-                    )}
-                    <div>
-                      <p className="text-[13px] font-medium text-text-primary">{check.label}</p>
-                      <p className="text-[12px] text-text-secondary">{check.description}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <Card padding="lg">
+                  <CardHeader
+                    title="Triggering Event"
+                    action={<Badge variant={getClaimStatusBadgeVariant(latestClaim.status)}>{latestClaim.status}</Badge>}
+                  />
+                  <div className="p-4 rounded-lg bg-background border border-border mb-4">
+                    <p className="text-[14px] font-semibold text-text-primary">{eventInfo?.label ?? latestClaim.event_type}</p>
+                    <p className="text-[13px] text-text-secondary mt-1">
+                      Auto-generated from the live backend event trigger pipeline.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 text-[12px]">
+                      <div>
+                        <span className="text-text-muted">Zone</span>
+                        <p className="font-medium text-text-primary">{latestClaim.zone}</p>
+                      </div>
+                      <div>
+                        <span className="text-text-muted">Affected Hours</span>
+                        <p className="font-medium text-text-primary">{formatNumber(latestClaim.affected_hours, 1)}h</p>
+                      </div>
+                      <div>
+                        <span className="text-text-muted">Severity</span>
+                        <p className="font-medium text-text-primary capitalize">{latestClaim.severity}</p>
+                      </div>
+                      <div>
+                        <span className="text-text-muted">Detected</span>
+                        <p className="font-medium text-text-primary">
+                          {linkedEvent ? formatDateTime(linkedEvent.start_time) : formatDateTime(latestClaim.created_at)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className="mt-4 px-3 py-2.5 rounded-lg bg-border-light flex items-start gap-2">
-                <FileText className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
-                <p className="text-[12px] text-text-secondary">
-                  Validation is performed by the rules engine. AI models assist with anomaly scoring
-                  and event classification but do not determine eligibility.
-                </p>
-              </div>
-            </Card>
-          </div>
 
-          {/* Payout Sidebar */}
-          <div className="space-y-6">
-            {/* Payout Calculation */}
-            <Card padding="lg" className={allPassed ? 'ring-1 ring-success' : ''}>
-              <CardHeader title="Payout Estimate" />
-              {allPassed ? (
-                <>
-                  <div className="text-center mb-4">
-                    <CheckCircle className="w-8 h-8 text-success mx-auto mb-2" />
-                    <p className="text-[28px] font-bold text-success">{formatCurrency(payout)}</p>
-                    <p className="text-[12px] text-text-secondary mt-1">Estimated payout amount</p>
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+                    <Shield className="w-4 h-4 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-text-primary">{latestClaim.policy_id}</p>
+                      <p className="text-[12px] text-text-secondary">
+                        {policy ? `${policy.coverage_tier} plan - ${policy.zone}, ${policy.city}` : 'Linked live policy snapshot'}
+                      </p>
+                    </div>
+                    <Badge variant="success">Active</Badge>
                   </div>
-                  <div className="bg-background border border-border rounded-lg p-3 mb-4 font-mono text-[11px] text-text-secondary leading-relaxed">
-                    <p className="text-text-muted text-[10px] mb-1">// Payout formula</p>
-                    <p>min(</p>
-                    <p className="pl-2">₹{policy.protectedHourlyIncome} × {shiftOverlap}h × {sevConfig.multiplier},</p>
-                    <p className="pl-2">₹{policy.coverageTier.maxWeeklyPayout}</p>
-                    <p>)</p>
-                  </div>
-                  <div className="space-y-2 text-[13px]">
-                    <Row label="Protected Hourly Income" value={`${formatCurrency(policy.protectedHourlyIncome)}/hr`} />
-                    <Row label="Shift Overlap" value={`${shiftOverlap} hours`} />
-                    <Row label="Severity Multiplier" value={`${sevConfig.multiplier}x`} />
-                    <Row label="Weekly Cap" value={formatCurrency(policy.coverageTier.maxWeeklyPayout)} />
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-4">
-                  <AlertTriangle className="w-8 h-8 text-danger mx-auto mb-2" />
-                  <p className="text-[14px] font-semibold text-danger">Claim Not Eligible</p>
-                  <p className="text-[13px] text-text-secondary mt-1">
-                    One or more validation checks failed. Review the checks for details.
-                  </p>
-                </div>
-              )}
-            </Card>
+                </Card>
 
-            {/* Status */}
-            <Card padding="md">
-              <CardHeader title="Claim Status" />
-              <div className="space-y-3">
-                <StatusStep label="Event Detected" status="complete" />
-                <StatusStep label="Validation Checks" status="complete" />
-                <StatusStep label="Payout Calculated" status="complete" />
-                <StatusStep label="Processing" status="active" />
-                <StatusStep label="Payout Credited" status="pending" />
+                <Card padding="lg">
+                  <CardHeader
+                    title="Validation Checks"
+                    subtitle="Rules-engine verification pipeline"
+                    action={allPassed ? <Badge variant="success">All Passed</Badge> : <Badge variant="danger">Review</Badge>}
+                  />
+                  <div className="space-y-2">
+                    {validationChecks.map((check) => (
+                      <div
+                        key={check.id}
+                        className={`flex items-start gap-3 p-3 rounded-lg border ${
+                          check.passed ? 'border-border bg-surface' : 'border-danger/30 bg-danger-light'
+                        }`}
+                      >
+                        {check.passed ? (
+                          <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <p className="text-[13px] font-medium text-text-primary">{check.label}</p>
+                          <p className="text-[12px] text-text-secondary">{check.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 px-3 py-2.5 rounded-lg bg-border-light flex items-start gap-2">
+                    <FileText className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
+                    <p className="text-[12px] text-text-secondary">
+                      Claim approval is deterministic. The backend stores these validation flags directly on every created claim.
+                    </p>
+                  </div>
+                </Card>
               </div>
-            </Card>
 
-            <Link href="/dashboard">
-              <Button variant="outline" fullWidth>
-                Go to Dashboard
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
+              <div className="space-y-6">
+                <Card padding="lg" className={allPassed ? 'ring-1 ring-success' : ''}>
+                  <CardHeader title="Payout Estimate" />
+                  {allPassed ? (
+                    <>
+                      <div className="text-center mb-4">
+                        <CheckCircle className="w-8 h-8 text-success mx-auto mb-2" />
+                        <p className="text-[28px] font-bold text-success">{formatCurrencyValue(latestClaim.payout_estimate)}</p>
+                        <p className="text-[12px] text-text-secondary mt-1">Estimated payout amount</p>
+                      </div>
+                      <div className="bg-background border border-border rounded-lg p-3 mb-4 font-mono text-[11px] text-text-secondary leading-relaxed">
+                        <p className="text-text-muted text-[10px] mb-1">{'// Payout formula'}</p>
+                        <p>min(</p>
+                        <p className="pl-2">
+                          {formatCurrencyValue(latestClaim.protected_hourly_income)} x {formatNumber(latestClaim.affected_hours, 1)}h x{' '}
+                          {latestClaim.severity_multiplier},
+                        </p>
+                        <p className="pl-2">policy cap</p>
+                        <p>)</p>
+                      </div>
+                      <div className="space-y-2 text-[13px]">
+                        <Row label="Protected Hourly Income" value={`${formatCurrencyValue(latestClaim.protected_hourly_income)}/hr`} />
+                        <Row label="Shift Overlap" value={`${formatNumber(latestClaim.affected_hours, 1)} hours`} />
+                        <Row label="Severity Multiplier" value={`${latestClaim.severity_multiplier}x`} />
+                        <Row label="Claim Status" value={latestClaim.status} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <AlertTriangle className="w-8 h-8 text-danger mx-auto mb-2" />
+                      <p className="text-[14px] font-semibold text-danger">Claim Needs Review</p>
+                      <p className="text-[13px] text-text-secondary mt-1">
+                        One or more validation checks failed. Review the checks for details.
+                      </p>
+                    </div>
+                  )}
+                </Card>
+
+                <Card padding="md">
+                  <CardHeader title="Claim Status" />
+                  <div className="space-y-3">
+                    <StatusStep label="Event Detected" status="complete" />
+                    <StatusStep label="Validation Checks" status="complete" />
+                    <StatusStep label="Claim Created" status="complete" />
+                    <StatusStep label="Approval" status={latestClaim.status === 'approved' ? 'complete' : 'active'} />
+                    <StatusStep label="Payout Ready" status={latestClaim.status === 'approved' ? 'active' : 'pending'} />
+                  </div>
+                </Card>
+
+                {error && (
+                  <Card padding="md" className="border-danger/30 bg-danger-light">
+                    <p className="text-[13px] text-danger">{error}</p>
+                  </Card>
+                )}
+
+                <Link href="/dashboard">
+                  <Button variant="outline" fullWidth>
+                    Go to Dashboard
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </>
+        )}
       </main>
     </>
+  );
+}
+
+function EmptyState({
+  title,
+  description,
+  href,
+  cta,
+}: {
+  title: string;
+  description: string;
+  href: string;
+  cta: string;
+}) {
+  return (
+    <Card padding="lg">
+      <h1 className="text-xl font-bold text-text-primary">{title}</h1>
+      <p className="text-[14px] text-text-secondary mt-1">{description}</p>
+      <div className="mt-4">
+        <Link href={href}>
+          <Button>
+            {cta}
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </Link>
+      </div>
+    </Card>
   );
 }
 
@@ -254,13 +333,39 @@ function StatusStep({ label, status }: { label: string; status: 'complete' | 'ac
           <div className={`w-2 h-2 rounded-full ${status === 'active' ? 'bg-white' : 'bg-text-muted'}`} />
         )}
       </div>
-      <span
-        className={`text-[13px] ${
-          status === 'pending' ? 'text-text-muted' : 'font-medium text-text-primary'
-        }`}
-      >
+      <span className={status === 'pending' ? 'text-[13px] text-text-muted' : 'text-[13px] font-medium text-text-primary'}>
         {label}
       </span>
+    </div>
+  );
+}
+
+function ClaimSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-8 w-40 bg-border-light rounded" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card padding="lg">
+            <div className="h-5 w-44 bg-border-light rounded" />
+            <div className="h-28 bg-border-light rounded-lg mt-4" />
+          </Card>
+          <Card padding="lg">
+            <div className="h-5 w-40 bg-border-light rounded" />
+            <div className="space-y-2 mt-4">
+              <div className="h-16 bg-border-light rounded-lg" />
+              <div className="h-16 bg-border-light rounded-lg" />
+              <div className="h-16 bg-border-light rounded-lg" />
+            </div>
+          </Card>
+        </div>
+        <div className="space-y-6">
+          <Card padding="lg">
+            <div className="h-5 w-32 bg-border-light rounded" />
+            <div className="h-24 bg-border-light rounded-lg mt-4" />
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

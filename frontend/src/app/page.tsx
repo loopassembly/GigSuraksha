@@ -195,7 +195,7 @@ export default function LandingPage() {
                   Claims are calculated automatically using verified event data.
                 </p>
                 <div className="bg-background border border-border rounded-lg p-4 font-mono text-[13px] text-text-primary leading-relaxed">
-                  <p className="text-text-muted text-[11px] mb-2">// Payout calculation</p>
+                  <p className="text-text-muted text-[11px] mb-2">{'// Payout calculation'}</p>
                   <p>
                     Payout = min(
                   </p>
@@ -342,7 +342,7 @@ export default function LandingPage() {
           <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-[13px] text-text-muted">
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
-              <span>GigSuraksha — Phase 1 Prototype</span>
+              <span>GigSuraksha — Phase 2</span>
             </div>
             <div>Guidewire DEVTrails 2026 Submission</div>
           </div>

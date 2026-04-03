@@ -4,6 +4,19 @@ export type Platform = 'Blinkit' | 'Zepto' | 'Instamart' | 'BigBasket Now';
 
 export type City = 'Bengaluru' | 'Mumbai' | 'Delhi NCR' | 'Hyderabad' | 'Pune' | 'Chennai';
 
+export type CoverageTierId = 'basic' | 'standard' | 'comprehensive';
+export type BackendShiftType = 'morning_rush' | 'afternoon' | 'evening_rush' | 'late_night';
+export type BackendRiskBand = 'LOW' | 'MEDIUM' | 'HIGH';
+export type BackendClaimStatus = 'auto_initiated' | 'approved' | 'rejected';
+export type BackendPolicyStatus = 'active' | 'expired' | 'cancelled';
+export type BackendEventType =
+  | 'heavy_rainfall'
+  | 'waterlogging'
+  | 'severe_aqi'
+  | 'platform_outage'
+  | 'dark_store_unavailable'
+  | 'zone_access_restriction';
+
 export type DisruptionCategory =
   | 'WEATHER'
   | 'ACCESS'
@@ -43,6 +56,9 @@ export interface Zone {
   city: City;
   riskLevel: 'low' | 'medium' | 'high';
   darkStores: string[];
+  apiSupported?: boolean;
+  backendCity?: string;
+  backendName?: string;
 }
 
 export interface DeliveryPartner {
@@ -60,12 +76,12 @@ export interface DeliveryPartner {
 
 export interface RiskFactor {
   label: string;
-  score: number; // 0-100
+  score: number;
   color: string;
 }
 
 export interface RiskProfile {
-  overall: number; // 0-100
+  overall: number;
   factors: RiskFactor[];
   tier: 'low' | 'moderate' | 'high';
 }
@@ -80,7 +96,7 @@ export interface PremiumBreakdown {
 }
 
 export interface CoverageTier {
-  id: string;
+  id: CoverageTierId;
   name: string;
   maxWeeklyPayout: number;
   coveragePercent: number;
@@ -205,4 +221,190 @@ export interface OnboardingData {
   weeklyEarnings: number;
   weeklyActiveHours: number;
   upiId: string;
+}
+
+// ─── Backend Contracts ───────────────────────────────────────
+
+export interface BackendWorker {
+  worker_id: string;
+  name: string;
+  phone: string;
+  city: string;
+  platform: string;
+  zone: string;
+  shift_type: BackendShiftType;
+  weekly_earnings: number;
+  weekly_active_hours: number;
+  upi_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BackendRiskSummary {
+  risk_score: number;
+  risk_band: BackendRiskBand;
+  expected_disrupted_hours: number;
+  premium_loading: number;
+  top_risk_drivers: string[];
+  zone_risk_band: BackendRiskBand;
+  zone_baseline_risk_score: number;
+}
+
+export interface BackendPremiumBreakdown {
+  base_premium: number;
+  zone_risk_loading: number;
+  shift_exposure_loading: number;
+  coverage_factor: number;
+  ml_risk_loading: number;
+  safe_zone_discount: number;
+  final_weekly_premium: number;
+}
+
+export interface BackendCoverageSummary {
+  coverage_tier: CoverageTierId;
+  coverage_percent: number;
+  max_weekly_payout: number;
+  insured_shift_hours_per_week: number;
+  protected_hours_basis: number;
+  protected_weekly_income: number;
+  protected_hourly_income: number;
+}
+
+export interface BackendQuoteResponse {
+  model_version: string;
+  worker_profile: {
+    city: string;
+    zone: string;
+    shift_type: BackendShiftType;
+    coverage_tier: CoverageTierId;
+    weekly_earnings: number;
+    weekly_active_hours: number;
+  };
+  risk_summary: BackendRiskSummary;
+  premium_breakdown: BackendPremiumBreakdown;
+  coverage_summary: BackendCoverageSummary;
+}
+
+export interface BackendPolicy {
+  policy_id: string;
+  worker_id: string;
+  city: string;
+  zone: string;
+  shift_type: BackendShiftType;
+  coverage_tier: CoverageTierId;
+  weekly_earnings: number;
+  weekly_active_hours: number;
+  model_version: string;
+  risk_summary: BackendRiskSummary;
+  premium_breakdown: BackendPremiumBreakdown;
+  coverage_summary: BackendCoverageSummary;
+  weekly_premium: number;
+  max_weekly_payout: number;
+  coverage_percent: number;
+  valid_from: string;
+  valid_to: string;
+  status: BackendPolicyStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BackendEvent {
+  event_id: string;
+  event_type: string;
+  city: string;
+  zone: string;
+  severity: Severity;
+  start_time: string;
+  duration_hours: number;
+  end_time: string;
+  source: string;
+  verified: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface BackendClaim {
+  claim_id: string;
+  worker_id: string;
+  policy_id: string;
+  event_id: string;
+  city: string;
+  zone: string;
+  event_type: string;
+  severity: Severity;
+  affected_hours: number;
+  protected_hourly_income: number;
+  severity_multiplier: number;
+  payout_estimate: number;
+  status: BackendClaimStatus;
+  validation_checks: Record<string, boolean>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BackendClaimsResponse {
+  claims: BackendClaim[];
+}
+
+export interface BackendPoliciesResponse {
+  policies: BackendPolicy[];
+}
+
+export interface BackendEventSimulationResponse {
+  event: BackendEvent;
+  claims_created: number;
+  claims: BackendClaim[];
+}
+
+export interface AdminSummary {
+  total_workers: number;
+  total_active_policies: number;
+  total_events: number;
+  total_claims: number;
+  claims_by_status: Record<string, number>;
+  claims_by_event_type: Record<string, number>;
+  recent_events: BackendEvent[];
+  recent_claims: BackendClaim[];
+  forecast_cards: Array<{
+    city: string;
+    zone: string;
+    shift_type: BackendShiftType;
+    coverage_tier: CoverageTierId;
+    risk_band: BackendRiskBand;
+    risk_score: number;
+    expected_disrupted_hours: number;
+    suggested_weekly_premium: number;
+    model_version: string;
+  }>;
+}
+
+// ─── Local Session Types ─────────────────────────────────────
+
+export interface StoredWorker {
+  worker_id: string;
+  name: string;
+  phone: string;
+  display_city: City | string;
+  backend_city: string;
+  platform: Platform | string;
+  zone_id: string;
+  zone: string;
+  shift_ids: string[];
+  shift_type: BackendShiftType;
+  weekly_earnings: number;
+  weekly_active_hours: number;
+  upi_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoredEvent {
+  event: BackendEvent;
+  claims_created: number;
+  claims: BackendClaim[];
+}
+
+export interface ApiErrorShape {
+  detail?: unknown;
+  message?: string;
 }

@@ -1,26 +1,28 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import Card, { CardHeader } from '@/components/Card';
 import StatCard from '@/components/StatCard';
 import Badge from '@/components/Badge';
+import { ApiError, getAdminSummary, getAllClaims } from '@/lib/api';
 import {
-  ADMIN_STATS,
-  CLAIMS_BY_TYPE,
-  ZONE_EXPOSURE,
-  ANOMALY_ALERTS,
-  FORECAST_INSIGHTS,
-} from '@/lib/mock-data';
-import { DISRUPTION_TYPE_INFO } from '@/lib/constants';
-import { formatCurrency, formatCurrencyShort } from '@/lib/calculations';
+  formatCurrencyValue,
+  formatDateTime,
+  formatNumber,
+  getClaimStatusBadgeVariant,
+  getEventInfo,
+  getRiskBadgeVariant,
+  getShiftLabel,
+} from '@/lib/backend-helpers';
+import { formatCurrencyShort } from '@/lib/calculations';
+import type { AdminSummary, BackendClaim } from '@/lib/types';
 import {
-  Shield,
-  FileWarning,
-  IndianRupee,
-  TrendingDown,
   AlertTriangle,
-  AlertCircle,
+  Clock3,
   Eye,
+  FileWarning,
+  Shield,
 } from 'lucide-react';
 import {
   BarChart,
@@ -35,10 +37,66 @@ import {
   Cell,
 } from 'recharts';
 
-const PIE_COLORS = ['#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE', '#DBEAFE'];
+const CHART_COLORS = ['#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE', '#DBEAFE'];
 
 export default function AdminPage() {
-  const stats = ADMIN_STATS;
+  const [summary, setSummary] = useState<AdminSummary | null>(null);
+  const [allClaims, setAllClaims] = useState<BackendClaim[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAdmin() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const [summaryResponse, claimsResponse] = await Promise.all([getAdminSummary(), getAllClaims()]);
+        if (cancelled) {
+          return;
+        }
+        setSummary(summaryResponse);
+        setAllClaims(claimsResponse);
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
+        if (requestError instanceof ApiError) {
+          setError(requestError.detail || requestError.message);
+        } else {
+          setError('Unable to load the admin dashboard right now.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadAdmin();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const totalPayouts = allClaims.reduce((sum, claim) => sum + claim.payout_estimate, 0);
+  const claimsByType =
+    summary?.claims_by_event_type
+      ? Object.entries(summary.claims_by_event_type).map(([eventType, count]) => ({
+          type: getEventInfo(eventType).label,
+          count,
+        }))
+      : [];
+  const claimsByStatus =
+    summary?.claims_by_status
+      ? Object.entries(summary.claims_by_status).map(([status, count]) => ({
+          status,
+          count,
+        }))
+      : [];
 
   return (
     <>
@@ -47,243 +105,233 @@ export default function AdminPage() {
         <div className="mb-6">
           <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Admin Dashboard</h1>
           <p className="text-[14px] text-text-secondary mt-1">
-            Operational overview — Week 12, March 2026
+            Live operational summary from the deployed GigSuraksha backend
           </p>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <StatCard
-            label="Active Policies"
-            value={stats.activePolicies.toLocaleString('en-IN')}
-            change={stats.activePoliciesChange}
-            icon={<Shield className="w-4 h-4 text-primary" />}
-          />
-          <StatCard
-            label="Total Claims"
-            value={stats.totalClaims.toLocaleString('en-IN')}
-            change={stats.totalClaimsChange}
-            icon={<FileWarning className="w-4 h-4 text-primary" />}
-          />
-          <StatCard
-            label="Total Payouts"
-            value={formatCurrencyShort(stats.totalPayouts)}
-            change={stats.totalPayoutsChange}
-            icon={<IndianRupee className="w-4 h-4 text-primary" />}
-          />
-          <StatCard
-            label="Loss Ratio"
-            value={`${(stats.lossRatio * 100).toFixed(0)}%`}
-            change={stats.lossRatioChange}
-            icon={<TrendingDown className="w-4 h-4 text-primary" />}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Claims by Type Chart */}
-          <div className="lg:col-span-2">
-            <Card padding="lg">
-              <CardHeader
-                title="Claims by Disruption Type"
-                subtitle="Distribution of claims this week"
-              />
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={CLAIMS_BY_TYPE} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                    <XAxis
-                      dataKey="type"
-                      tick={{ fontSize: 11, fill: '#94A3B8' }}
-                      tickLine={false}
-                      axisLine={{ stroke: '#E2E8F0' }}
-                      interval={0}
-                      angle={-30}
-                      textAnchor="end"
-                      height={60}
-                    />
-                    <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} tickLine={false} axisLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        background: '#FFFFFF',
-                        border: '1px solid #E2E8F0',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#2563EB" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+        {error && (
+          <div className="mb-6 px-3 py-2.5 rounded-lg bg-danger-light border border-danger/20 text-[13px] text-danger">
+            {error}
           </div>
+        )}
 
-          {/* Payout Distribution Pie */}
-          <Card padding="lg">
-            <CardHeader title="Payout Distribution" subtitle="By disruption category" />
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={CLAIMS_BY_TYPE}
-                    dataKey="amount"
-                    nameKey="type"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={70}
-                    innerRadius={40}
-                  >
-                    {CLAIMS_BY_TYPE.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: '#FFFFFF',
-                      border: '1px solid #E2E8F0',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+        {isLoading ? (
+          <AdminSkeleton />
+        ) : summary ? (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <StatCard
+                label="Registered Workers"
+                value={summary.total_workers.toLocaleString('en-IN')}
+                icon={<Shield className="w-4 h-4 text-primary" />}
+                subtitle="Workers in system"
+              />
+              <StatCard
+                label="Active Policies"
+                value={summary.total_active_policies.toLocaleString('en-IN')}
+                icon={<Shield className="w-4 h-4 text-primary" />}
+                subtitle="Current active cover"
+              />
+              <StatCard
+                label="Total Events"
+                value={summary.total_events.toLocaleString('en-IN')}
+                icon={<AlertTriangle className="w-4 h-4 text-primary" />}
+                subtitle="Verified event records"
+              />
+              <StatCard
+                label="Total Claims"
+                value={summary.total_claims.toLocaleString('en-IN')}
+                icon={<FileWarning className="w-4 h-4 text-primary" />}
+                subtitle={`Payouts ${formatCurrencyShort(totalPayouts)}`}
+              />
             </div>
-            <div className="space-y-1 mt-2">
-              {CLAIMS_BY_TYPE.slice(0, 4).map((item, i) => (
-                <div key={item.type} className="flex items-center gap-2 text-[11px]">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: PIE_COLORS[i] }} />
-                  <span className="text-text-secondary truncate">{item.type}</span>
-                  <span className="ml-auto font-medium text-text-primary">{formatCurrencyShort(item.amount)}</span>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="lg:col-span-2">
+                <Card padding="lg">
+                  <CardHeader title="Claims by Disruption Type" subtitle="Live claim counts by backend event type" />
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={claimsByType} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                        <XAxis
+                          dataKey="type"
+                          tick={{ fontSize: 11, fill: '#94A3B8' }}
+                          tickLine={false}
+                          axisLine={{ stroke: '#E2E8F0' }}
+                          interval={0}
+                          angle={-25}
+                          textAnchor="end"
+                          height={64}
+                        />
+                        <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} tickLine={false} axisLine={false} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill="#2563EB" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+              </div>
+
+              <Card padding="lg">
+                <CardHeader title="Claims by Status" subtitle="Current claim pipeline mix" />
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={claimsByStatus} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={70} innerRadius={40}>
+                        {claimsByStatus.map((_, index) => (
+                          <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Zone Exposure Table */}
-          <Card padding="lg">
-            <CardHeader title="Zone Exposure" subtitle="Active policies and risk by zone" />
-            <div className="overflow-x-auto -mx-4 sm:-mx-5 px-4 sm:px-5">
-              <table className="w-full text-[12px]">
-                <thead>
-                  <tr className="text-left text-text-muted text-[10px] uppercase tracking-wider">
-                    <th className="pb-2 pr-3 font-medium">Zone</th>
-                    <th className="pb-2 pr-3 font-medium">City</th>
-                    <th className="pb-2 pr-3 font-medium">Policies</th>
-                    <th className="pb-2 pr-3 font-medium">Risk</th>
-                    <th className="pb-2 font-medium">Exposure</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {ZONE_EXPOSURE.map((ze) => (
-                    <tr key={ze.zone}>
-                      <td className="py-2.5 pr-3 font-medium text-text-primary">{ze.zone}</td>
-                      <td className="py-2.5 pr-3 text-text-secondary">{ze.city}</td>
-                      <td className="py-2.5 pr-3 text-text-primary">{ze.activePolicies.toLocaleString('en-IN')}</td>
-                      <td className="py-2.5 pr-3">
-                        <Badge
-                          variant={
-                            ze.riskLevel === 'High' ? 'danger' : ze.riskLevel === 'Medium' ? 'warning' : 'success'
-                          }
-                        >
-                          {ze.riskLevel}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5 font-medium text-text-primary">{formatCurrencyShort(ze.totalExposure)}</td>
-                    </tr>
+                <div className="space-y-1 mt-2">
+                  {claimsByStatus.map((item, index) => (
+                    <div key={item.status} className="flex items-center gap-2 text-[11px]">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                      <span className="text-text-secondary truncate">{item.status}</span>
+                      <span className="ml-auto font-medium text-text-primary">{item.count}</span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </Card>
             </div>
-          </Card>
 
-          {/* Anomaly Alerts */}
-          <Card padding="lg">
-            <CardHeader
-              title="Anomaly Alerts"
-              subtitle="AI-flagged suspicious patterns"
-              action={<Badge variant="danger">{ANOMALY_ALERTS.length} alerts</Badge>}
-            />
-            <div className="space-y-3">
-              {ANOMALY_ALERTS.map((alert) => (
-                <div
-                  key={alert.id}
-                  className={`p-3 rounded-lg border ${
-                    alert.severity === 'critical'
-                      ? 'border-danger/30 bg-danger-light'
-                      : 'border-warning/30 bg-warning-light'
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    {alert.severity === 'critical' ? (
-                      <AlertCircle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="text-[12px] font-semibold text-text-primary">{alert.type}</p>
-                        <Badge variant={alert.severity === 'critical' ? 'danger' : 'warning'}>
-                          {alert.severity}
-                        </Badge>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <Card padding="lg">
+                <CardHeader title="Recent Events" subtitle="Latest backend event records" />
+                <div className="space-y-3">
+                  {summary.recent_events.length > 0 ? (
+                    summary.recent_events.map((event) => (
+                      <div key={event.event_id} className="p-3 rounded-lg border border-border bg-background">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[13px] font-medium text-text-primary">{getEventInfo(event.event_type).label}</p>
+                            <p className="text-[12px] text-text-secondary">{event.zone}, {event.city}</p>
+                          </div>
+                          <Badge variant={event.severity === 'severe' ? 'danger' : event.severity === 'high' ? 'warning' : 'muted'}>
+                            {event.severity}
+                          </Badge>
+                        </div>
+                        <p className="text-[11px] text-text-muted mt-2">
+                          {formatDateTime(event.start_time)} • {formatNumber(event.duration_hours, 1)}h • {event.source}
+                        </p>
                       </div>
-                      <p className="text-[12px] text-text-secondary">{alert.message}</p>
-                      <p className="text-[11px] text-text-muted mt-1">{alert.zone}</p>
+                    ))
+                  ) : (
+                    <p className="text-[12px] text-text-secondary">No recent events available.</p>
+                  )}
+                </div>
+              </Card>
+
+              <Card padding="lg">
+                <CardHeader title="Recent Claims" subtitle="Latest auto-created claim records" />
+                <div className="space-y-3">
+                  {summary.recent_claims.length > 0 ? (
+                    summary.recent_claims.map((claim) => (
+                      <div key={claim.claim_id} className="p-3 rounded-lg border border-border bg-background">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[13px] font-medium text-text-primary">{claim.claim_id}</p>
+                            <p className="text-[12px] text-text-secondary">{getEventInfo(claim.event_type).label}</p>
+                          </div>
+                          <Badge variant={getClaimStatusBadgeVariant(claim.status)}>{claim.status}</Badge>
+                        </div>
+                        <div className="flex items-center justify-between mt-2 text-[12px]">
+                          <span className="text-text-secondary">{claim.zone}</span>
+                          <span className="font-medium text-text-primary">{formatCurrencyValue(claim.payout_estimate)}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[12px] text-text-secondary">No recent claims available.</p>
+                  )}
+                </div>
+              </Card>
+            </div>
+
+            <Card padding="lg" className="mb-6">
+              <CardHeader
+                title="Next-Week Disruption Forecast"
+                subtitle="Forecast cards exposed by the backend for demo and admin views"
+                action={<Badge variant="info">ML Forecast</Badge>}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {summary.forecast_cards.map((card) => (
+                  <div key={`${card.city}-${card.zone}-${card.shift_type}`} className="p-3 rounded-lg border border-border bg-background">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <p className="text-[13px] font-medium text-text-primary">{card.zone}</p>
+                      <Badge variant={getRiskBadgeVariant(card.risk_band)}>{card.risk_band}</Badge>
+                    </div>
+                    <p className="text-[12px] text-text-secondary">{card.city} • {getShiftLabel(card.shift_type)}</p>
+                    <div className="mt-3 space-y-1 text-[12px]">
+                      <div className="flex justify-between">
+                        <span className="text-text-secondary">Risk Score</span>
+                        <span className="font-medium text-text-primary">{card.risk_score}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-text-secondary">Expected Hours</span>
+                        <span className="font-medium text-text-primary">{formatNumber(card.expected_disrupted_hours)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-text-secondary">Suggested Premium</span>
+                        <span className="font-medium text-text-primary">{formatCurrencyValue(card.suggested_weekly_premium)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+                ))}
+              </div>
+              <div className="mt-4 px-3 py-2.5 rounded-lg bg-border-light flex items-start gap-2">
+                <Eye className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
+                <p className="text-[12px] text-text-secondary">
+                  Forecast cards are useful for demo dashboards. Claim approval still stays separate from ML and remains rule-based.
+                </p>
+              </div>
+            </Card>
 
-        {/* Forecast Insights */}
-        <Card padding="lg" className="mb-6">
-          <CardHeader
-            title="Next-Week Disruption Forecast"
-            subtitle="AI-generated risk predictions for Week 13 (Mar 23–29)"
-            action={<Badge variant="info">AI Forecast</Badge>}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {FORECAST_INSIGHTS.map((insight) => {
-              const info = DISRUPTION_TYPE_INFO[insight.riskType];
-              return (
-                <div key={insight.zone} className="p-3 rounded-lg border border-border bg-background">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[13px] font-medium text-text-primary">{insight.zone}</p>
-                    <span
-                      className={`text-[12px] font-bold ${
-                        insight.probability >= 0.7 ? 'text-danger' : insight.probability >= 0.5 ? 'text-warning' : 'text-success'
-                      }`}
-                    >
-                      {Math.round(insight.probability * 100)}%
-                    </span>
-                  </div>
-                  <p className="text-[12px] text-text-secondary">{info?.label}</p>
-                  <p className="text-[11px] text-text-muted mt-1">{insight.expectedImpact}</p>
-                  <div className="mt-2 w-full h-1.5 bg-border-light rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${insight.probability * 100}%`,
-                        backgroundColor: insight.probability >= 0.7 ? '#DC2626' : insight.probability >= 0.5 ? '#D97706' : '#059669',
-                      }}
-                    />
-                  </div>
+            <Card padding="md">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary-light flex items-center justify-center flex-shrink-0">
+                  <Clock3 className="w-4 h-4 text-primary" />
                 </div>
-              );
-            })}
-          </div>
-          <div className="mt-4 px-3 py-2.5 rounded-lg bg-border-light flex items-start gap-2">
-            <Eye className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
-            <p className="text-[12px] text-text-secondary">
-              Forecasts are generated by ML models trained on historical weather, infrastructure, and platform data.
-              They inform risk pricing and reserve allocation — not direct payout decisions.
-            </p>
-          </div>
-        </Card>
+                <div>
+                  <p className="text-[13px] font-semibold text-text-primary">Operational Snapshot</p>
+                  <p className="text-[12px] text-text-secondary mt-0.5">
+                    Total live payouts so far: {formatCurrencyValue(totalPayouts)} across {allClaims.length} claim records.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </>
+        ) : (
+          <Card padding="lg">
+            <p className="text-[14px] text-text-secondary">Admin summary could not be loaded.</p>
+          </Card>
+        )}
       </main>
     </>
+  );
+}
+
+function AdminSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="h-28 bg-border-light rounded-lg" />
+        <div className="h-28 bg-border-light rounded-lg" />
+        <div className="h-28 bg-border-light rounded-lg" />
+        <div className="h-28 bg-border-light rounded-lg" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 h-80 bg-border-light rounded-lg" />
+        <div className="h-80 bg-border-light rounded-lg" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-64 bg-border-light rounded-lg" />
+        <div className="h-64 bg-border-light rounded-lg" />
+      </div>
+    </div>
   );
 }
