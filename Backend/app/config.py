@@ -60,14 +60,28 @@ SEVERITY_MULTIPLIER_BY_LEVEL = {
 SUPPORTED_EVENT_TYPES = {
     "heavy_rainfall",
     "waterlogging",
+    "heat_stress",
     "severe_aqi",
     "platform_outage",
     "dark_store_unavailable",
     "zone_access_restriction",
 }
+PAYOUT_STATUS_VALUES = {
+    "pending",
+    "processed",
+    "failed",
+}
+ANOMALY_BAND_THRESHOLDS = {
+    "LOW": 0.30,
+    "MEDIUM": 0.65,
+}
+MONITORED_TRIGGER_SOURCES = (
+    "weather_mock",
+    "traffic_mock",
+    "platform_mock",
+)
 
 DEMO_REQUESTS_PATH = BACKEND_ROOT / "samples" / "quote_demo_requests.json"
-DEMO_OUTPUTS_PATH = BACKEND_ROOT / "samples" / "quote_demo_outputs.json"
 BACKEND_ENV_PATH = BACKEND_ROOT / ".env"
 REPO_ENV_PATH = REPO_ROOT / ".env"
 

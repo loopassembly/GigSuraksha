@@ -19,6 +19,8 @@ from app.schemas import (
     PolicyCreateRequest,
     PolicyListResponse,
     PolicyResponse,
+    TriggerMonitorRequest,
+    TriggerMonitorResponse,
     QuoteGenerateRequest,
     QuoteGenerateResponse,
     RiskPredictRequest,
@@ -32,6 +34,7 @@ from app.services.event_service import simulate_event
 from app.services.ml_service import predict_risk
 from app.services.policy_service import create_policy, get_policy, list_worker_policies
 from app.services.quote_service import generate_quote
+from app.services.trigger_service import run_trigger_monitor
 from app.services.worker_service import get_worker, register_worker
 
 
@@ -153,6 +156,13 @@ def create_app(database: Any | None = None) -> FastAPI:
     async def post_event_simulate(payload: EventSimulationRequest, request: Request) -> dict[str, Any]:
         try:
             return await simulate_event(get_database_from_request(request), model_to_dict(payload))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/triggers/monitor/run", response_model=TriggerMonitorResponse)
+    async def post_trigger_monitor_run(payload: TriggerMonitorRequest, request: Request) -> dict[str, Any]:
+        try:
+            return await run_trigger_monitor(get_database_from_request(request), model_to_dict(payload))
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -22,5 +22,12 @@ class EventRepository:
             limit=limit,
         )
 
+    async def list_all(self, limit: int | None = None) -> list[dict[str, Any]]:
+        return await self.database.find_many(
+            self.collection_name,
+            sort=("created_at", -1),
+            limit=limit,
+        )
+
     async def count(self) -> int:
         return await self.database.count_documents(self.collection_name)

@@ -15,5 +15,11 @@ class WorkerRepository:
     async def get_by_worker_id(self, worker_id: str) -> dict[str, Any] | None:
         return await self.database.find_one(self.collection_name, {"worker_id": worker_id})
 
+    async def list_by_upi_id(self, upi_id: str) -> list[dict[str, Any]]:
+        return await self.database.find_many(self.collection_name, {"upi_id": upi_id})
+
+    async def list_all(self) -> list[dict[str, Any]]:
+        return await self.database.find_many(self.collection_name)
+
     async def count(self) -> int:
         return await self.database.count_documents(self.collection_name)

@@ -10,6 +10,7 @@ import type {
   BackendClaim,
   BackendClaimStatus,
   BackendEvent,
+  BackendPayoutStatus,
   BackendPolicy,
   BackendRiskBand,
   BackendShiftType,
@@ -20,7 +21,14 @@ import type {
 } from './types';
 
 export function getReferenceDate() {
-  return new Date().toISOString().slice(0, 10);
+  return formatDateInputValue(new Date());
+}
+
+export function formatDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function getPrimaryShiftId(shiftIds: string[]) {
@@ -169,6 +177,16 @@ export function getClaimStatusBadgeVariant(status: BackendClaimStatus | string) 
   return 'muted';
 }
 
+export function getPayoutStatusBadgeVariant(status: BackendPayoutStatus | string) {
+  if (status === 'processed') {
+    return 'success';
+  }
+  if (status === 'failed') {
+    return 'danger';
+  }
+  return 'warning';
+}
+
 export function getPolicyStatusBadgeVariant(status: string) {
   if (status === 'active') {
     return 'success';
@@ -249,6 +267,18 @@ export function describeValidationChecks(
       label: 'Duplicate Check',
       description: 'No duplicate claim was detected for the same policy and event.',
       passed: !validationChecks.duplicate_claim,
+    },
+    {
+      id: 'location_match',
+      label: 'Location Validation',
+      description: 'Reported city and zone matched the insured worker context.',
+      passed: Boolean(validationChecks.location_match),
+    },
+    {
+      id: 'activity_validation',
+      label: 'Activity Validation',
+      description: 'The worker activity snapshot looked consistent with a genuine delivery session.',
+      passed: Boolean(validationChecks.activity_validation),
     },
   ];
 }

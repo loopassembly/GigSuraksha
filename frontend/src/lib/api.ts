@@ -7,6 +7,7 @@ import type {
   BackendPolicy,
   BackendPoliciesResponse,
   BackendQuoteResponse,
+  TriggerMonitorRunResponse,
   BackendWorker,
   BackendShiftType,
   CoverageTierId,
@@ -183,6 +184,17 @@ export async function getAllClaims() {
 
 export function getAdminSummary() {
   return request<AdminSummary>('/api/admin/summary');
+}
+
+export function runTriggerMonitor(payload?: {
+  reference_time?: string;
+  sources?: string[];
+  dry_run?: boolean;
+}) {
+  return request<TriggerMonitorRunResponse>('/api/triggers/monitor/run', {
+    method: 'POST',
+    body: JSON.stringify(payload ?? {}),
+  });
 }
 
 export { API_BASE_URL };

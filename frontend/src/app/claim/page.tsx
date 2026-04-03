@@ -14,6 +14,7 @@ import {
   formatNumber,
   getClaimStatusBadgeVariant,
   getEventInfo,
+  getPayoutStatusBadgeVariant,
 } from '@/lib/backend-helpers';
 import { getEvent, getPolicy, getWorker } from '@/lib/store';
 import type { BackendClaim, BackendEvent, BackendPolicy, StoredWorker } from '@/lib/types';
@@ -97,7 +98,7 @@ export default function ClaimPage() {
   const linkedEvent = findEventForClaim(event, latestClaim);
   const eventInfo = latestClaim ? getEventInfo(latestClaim.event_type) : null;
   const validationChecks = latestClaim ? describeValidationChecks(latestClaim.validation_checks, latestClaim) : [];
-  const allPassed = validationChecks.every((check) => check.passed);
+  const allPassed = validationChecks.every((check) => check.passed) && latestClaim?.status === 'approved';
 
   return (
     <>
@@ -207,6 +208,47 @@ export default function ClaimPage() {
                     </p>
                   </div>
                 </Card>
+
+                <Card padding="lg">
+                  <CardHeader
+                    title="Fraud & Integrity Signals"
+                    subtitle="Anomaly checks applied before payout processing"
+                    action={
+                      <Badge
+                        variant={
+                          latestClaim.anomaly_band === 'HIGH'
+                            ? 'danger'
+                            : latestClaim.anomaly_band === 'MEDIUM'
+                            ? 'warning'
+                            : 'success'
+                        }
+                      >
+                        {latestClaim.anomaly_band}
+                      </Badge>
+                    }
+                  />
+                  <div className="grid grid-cols-2 gap-3 mb-4 text-[12px]">
+                    <div className="p-3 rounded-lg bg-background border border-border">
+                      <p className="text-text-muted">Anomaly Score</p>
+                      <p className="font-semibold text-text-primary mt-1">{latestClaim.anomaly_score}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-background border border-border">
+                      <p className="text-text-muted">Payout Status</p>
+                      <div className="mt-1">
+                        <Badge variant={getPayoutStatusBadgeVariant(latestClaim.payout_status)}>
+                          {latestClaim.payout_status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {latestClaim.anomaly_reasons.map((reason) => (
+                      <div key={reason} className="px-3 py-2 rounded-lg border border-border bg-background">
+                        <p className="text-[12px] text-text-primary capitalize">{reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
               </div>
 
               <div className="space-y-6">
@@ -216,7 +258,7 @@ export default function ClaimPage() {
                     <>
                       <div className="text-center mb-4">
                         <CheckCircle className="w-8 h-8 text-success mx-auto mb-2" />
-                        <p className="text-[28px] font-bold text-success">{formatCurrencyValue(latestClaim.payout_estimate)}</p>
+                        <p className="text-[28px] font-bold text-success">{formatCurrencyValue(latestClaim.payout_amount)}</p>
                         <p className="text-[12px] text-text-secondary mt-1">Estimated payout amount</p>
                       </div>
                       <div className="bg-background border border-border rounded-lg p-3 mb-4 font-mono text-[11px] text-text-secondary leading-relaxed">
@@ -234,6 +276,8 @@ export default function ClaimPage() {
                         <Row label="Shift Overlap" value={`${formatNumber(latestClaim.affected_hours, 1)} hours`} />
                         <Row label="Severity Multiplier" value={`${latestClaim.severity_multiplier}x`} />
                         <Row label="Claim Status" value={latestClaim.status} />
+                        <Row label="Payout Status" value={latestClaim.payout_status} />
+                        <Row label="Payout Reference" value={latestClaim.payout_reference || 'Pending'} />
                       </div>
                     </>
                   ) : (

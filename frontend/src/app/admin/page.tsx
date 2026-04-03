@@ -5,20 +5,23 @@ import Header from '@/components/Header';
 import Card, { CardHeader } from '@/components/Card';
 import StatCard from '@/components/StatCard';
 import Badge from '@/components/Badge';
-import { ApiError, getAdminSummary, getAllClaims } from '@/lib/api';
+import Button from '@/components/Button';
+import { ApiError, getAdminSummary, getAllClaims, runTriggerMonitor } from '@/lib/api';
 import {
   formatCurrencyValue,
   formatDateTime,
   formatNumber,
   getClaimStatusBadgeVariant,
   getEventInfo,
+  getPayoutStatusBadgeVariant,
   getRiskBadgeVariant,
   getShiftLabel,
 } from '@/lib/backend-helpers';
 import { formatCurrencyShort } from '@/lib/calculations';
-import type { AdminSummary, BackendClaim } from '@/lib/types';
+import type { AdminSummary, BackendClaim, TriggerMonitorRunResponse } from '@/lib/types';
 import {
   AlertTriangle,
+  ArrowRight,
   Clock3,
   Eye,
   FileWarning,
@@ -42,7 +45,9 @@ const CHART_COLORS = ['#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD', '#B
 export default function AdminPage() {
   const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [allClaims, setAllClaims] = useState<BackendClaim[]>([]);
+  const [monitorResult, setMonitorResult] = useState<TriggerMonitorRunResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMonitorRunning, setIsMonitorRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,7 +87,10 @@ export default function AdminPage() {
     };
   }, []);
 
-  const totalPayouts = allClaims.reduce((sum, claim) => sum + claim.payout_estimate, 0);
+  const totalPayouts = allClaims.reduce(
+    (sum, claim) => sum + (claim.payout_status === 'processed' ? claim.payout_amount : 0),
+    0
+  );
   const claimsByType =
     summary?.claims_by_event_type
       ? Object.entries(summary.claims_by_event_type).map(([eventType, count]) => ({
@@ -98,6 +106,26 @@ export default function AdminPage() {
         }))
       : [];
 
+  async function handleRunMonitor() {
+    setIsMonitorRunning(true);
+    setError(null);
+    try {
+      const result = await runTriggerMonitor();
+      const [summaryResponse, claimsResponse] = await Promise.all([getAdminSummary(), getAllClaims()]);
+      setMonitorResult(result);
+      setSummary(summaryResponse);
+      setAllClaims(claimsResponse);
+    } catch (requestError) {
+      if (requestError instanceof ApiError) {
+        setError(requestError.detail || requestError.message);
+      } else {
+        setError('Unable to run the automated trigger monitor right now.');
+      }
+    } finally {
+      setIsMonitorRunning(false);
+    }
+  }
+
   return (
     <>
       <Header />
@@ -107,6 +135,12 @@ export default function AdminPage() {
           <p className="text-[14px] text-text-secondary mt-1">
             Live operational summary from the deployed GigSuraksha backend
           </p>
+          <div className="mt-4">
+            <Button onClick={handleRunMonitor} disabled={isMonitorRunning}>
+              {isMonitorRunning ? 'Running Trigger Monitor...' : 'Run Automated Trigger Monitor'}
+              {!isMonitorRunning && <ArrowRight className="w-4 h-4" />}
+            </Button>
+          </div>
         </div>
 
         {error && (
@@ -119,6 +153,30 @@ export default function AdminPage() {
           <AdminSkeleton />
         ) : summary ? (
           <>
+            {monitorResult && (
+              <Card padding="md" className="mb-6">
+                <CardHeader title="Latest Monitor Run" action={<Badge variant="info">{monitorResult.monitor_run_id}</Badge>} />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-[12px]">
+                  <div className="p-3 rounded-lg border border-border bg-background">
+                    <p className="text-text-muted">Policies Scanned</p>
+                    <p className="font-semibold text-text-primary mt-1">{monitorResult.policies_scanned}</p>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-background">
+                    <p className="text-text-muted">Candidate Events</p>
+                    <p className="font-semibold text-text-primary mt-1">{monitorResult.candidate_events.length}</p>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-background">
+                    <p className="text-text-muted">Events Created</p>
+                    <p className="font-semibold text-text-primary mt-1">{monitorResult.events_created}</p>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-background">
+                    <p className="text-text-muted">Claims Created</p>
+                    <p className="font-semibold text-text-primary mt-1">{monitorResult.claims_created}</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
               <StatCard
                 label="Registered Workers"
@@ -241,7 +299,10 @@ export default function AdminPage() {
                         </div>
                         <div className="flex items-center justify-between mt-2 text-[12px]">
                           <span className="text-text-secondary">{claim.zone}</span>
-                          <span className="font-medium text-text-primary">{formatCurrencyValue(claim.payout_estimate)}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={getPayoutStatusBadgeVariant(claim.payout_status)}>{claim.payout_status}</Badge>
+                            <span className="font-medium text-text-primary">{formatCurrencyValue(claim.payout_amount)}</span>
+                          </div>
                         </div>
                       </div>
                     ))

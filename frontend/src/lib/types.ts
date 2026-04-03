@@ -9,9 +9,11 @@ export type BackendShiftType = 'morning_rush' | 'afternoon' | 'evening_rush' | '
 export type BackendRiskBand = 'LOW' | 'MEDIUM' | 'HIGH';
 export type BackendClaimStatus = 'auto_initiated' | 'approved' | 'rejected';
 export type BackendPolicyStatus = 'active' | 'expired' | 'cancelled';
+export type BackendPayoutStatus = 'pending' | 'processed' | 'failed';
 export type BackendEventType =
   | 'heavy_rainfall'
   | 'waterlogging'
+  | 'heat_stress'
   | 'severe_aqi'
   | 'platform_outage'
   | 'dark_store_unavailable'
@@ -338,6 +340,16 @@ export interface BackendClaim {
   payout_estimate: number;
   status: BackendClaimStatus;
   validation_checks: Record<string, boolean>;
+  anomaly_score: number;
+  anomaly_band: BackendRiskBand;
+  anomaly_reasons: string[];
+  activity_snapshot: Record<string, unknown>;
+  payout_status: BackendPayoutStatus;
+  payout_channel: string | null;
+  payout_reference: string | null;
+  payout_processed_at: string | null;
+  payout_amount: number;
+  payout_metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -354,6 +366,27 @@ export interface BackendEventSimulationResponse {
   event: BackendEvent;
   claims_created: number;
   claims: BackendClaim[];
+}
+
+export interface TriggerMonitorRunResponse {
+  monitor_run_id: string;
+  reference_time: string;
+  dry_run: boolean;
+  sources_used: string[];
+  policies_scanned: number;
+  candidate_events: Array<{
+    event_type: string;
+    city: string;
+    zone: string;
+    severity: Severity;
+    start_time: string;
+    duration_hours: number;
+    source: string;
+    metadata: Record<string, unknown>;
+  }>;
+  events_created: number;
+  claims_created: number;
+  events: BackendEvent[];
 }
 
 export interface AdminSummary {

@@ -1,0 +1,49 @@
+{
+  "monitor_run_id": "mon_20260403150000_c1a2",
+  "reference_time": "2026-04-03T15:00:00",
+  "dry_run": false,
+  "sources_used": ["weather_mock", "traffic_mock", "platform_mock"],
+  "policies_scanned": 4,
+  "candidate_events": [
+    {
+      "event_type": "platform_outage",
+      "city": "Bengaluru",
+      "zone": "Koramangala",
+      "severity": "moderate",
+      "start_time": "2026-04-03T18:00:00",
+      "duration_hours": 1.5,
+      "source": "platform_mock",
+      "metadata": {
+        "integration_kind": "platform_api_mock",
+        "trigger": "automated_monitor",
+        "reported_city": "Bengaluru",
+        "reported_zone": "Koramangala",
+        "activity_status": "active_session_confirmed"
+      }
+    }
+  ],
+  "events_created": 1,
+  "claims_created": 1,
+  "events": [
+    {
+      "event_id": "evt_20260403150001_d9c3",
+      "event_type": "platform_outage",
+      "city": "Bengaluru",
+      "zone": "Koramangala",
+      "severity": "moderate",
+      "start_time": "2026-04-03T18:00:00",
+      "duration_hours": 1.5,
+      "end_time": "2026-04-03T19:30:00",
+      "source": "platform_mock",
+      "verified": true,
+      "metadata": {
+        "integration_kind": "platform_api_mock",
+        "trigger": "automated_monitor",
+        "reported_city": "Bengaluru",
+        "reported_zone": "Koramangala",
+        "activity_status": "active_session_confirmed"
+      },
+      "created_at": "2026-04-03T15:00:01"
+    }
+  ]
+}

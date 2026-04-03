@@ -1,0 +1,5 @@
+{
+  "reference_time": "2026-04-03T15:00:00",
+  "sources": ["weather_mock", "traffic_mock", "platform_mock"],
+  "dry_run": false
+}

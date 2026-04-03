@@ -79,7 +79,7 @@ export const LIVE_ZONES = ZONES.filter((zone) => zone.apiSupported);
 export const EVENT_TYPE_MAP: Record<DisruptionType, BackendEventType | null> = {
   RAIN_EVENT: 'heavy_rainfall',
   WATERLOGGING_EVENT: 'waterlogging',
-  HEAT_STRESS_EVENT: null,
+  HEAT_STRESS_EVENT: 'heat_stress',
   AIR_QUALITY_EVENT: 'severe_aqi',
   ZONE_ACCESS_RESTRICTION: 'zone_access_restriction',
   DARK_STORE_UNAVAILABLE: 'dark_store_unavailable',
@@ -89,6 +89,7 @@ export const EVENT_TYPE_MAP: Record<DisruptionType, BackendEventType | null> = {
 export const BACKEND_EVENT_TO_UI_TYPE: Record<BackendEventType, DisruptionType> = {
   heavy_rainfall: 'RAIN_EVENT',
   waterlogging: 'WATERLOGGING_EVENT',
+  heat_stress: 'HEAT_STRESS_EVENT',
   severe_aqi: 'AIR_QUALITY_EVENT',
   platform_outage: 'PLATFORM_OUTAGE',
   dark_store_unavailable: 'DARK_STORE_UNAVAILABLE',
@@ -123,7 +124,7 @@ export const DISRUPTION_TYPE_INFO: Record<
     label: 'Extreme Heat',
     category: 'WEATHER',
     isPayoutTrigger: true,
-    description: 'Visible in the UI, but not currently supported by the live backend simulation API',
+    description: 'Heat stress severe enough to interrupt delivery work in the insured shift window',
     icon: 'Thermometer',
   },
   AIR_QUALITY_EVENT: {

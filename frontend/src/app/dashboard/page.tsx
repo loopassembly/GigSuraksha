@@ -102,7 +102,10 @@ export default function DashboardPage() {
     };
   }, [isReady, worker]);
 
-  const totalPaid = claims.reduce((sum, claim) => sum + claim.payout_estimate, 0);
+  const totalPaid = claims.reduce(
+    (sum, claim) => sum + (claim.payout_status === 'processed' ? claim.payout_amount : 0),
+    0
+  );
   const recentEvents = adminSummary?.recent_events ?? [];
 
   return (
@@ -246,7 +249,7 @@ export default function DashboardPage() {
                               <td className="py-3 pr-3 font-medium text-text-primary">{getEventInfo(claim.event_type).label}</td>
                               <td className="py-3 pr-3 text-text-secondary">{formatNumber(claim.affected_hours, 1)}h</td>
                               <td className="py-3 pr-3 font-medium text-text-primary">
-                                {formatCurrencyValue(claim.payout_estimate)}
+                                {formatCurrencyValue(claim.payout_amount)}
                               </td>
                               <td className="py-3">
                                 <Badge variant={getClaimStatusBadgeVariant(claim.status)}>{claim.status}</Badge>
