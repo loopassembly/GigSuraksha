@@ -114,6 +114,9 @@ class GigSurakshaApiTests(unittest.TestCase):
         self.assertEqual(event_response.status_code, 200)
         event_body = event_response.json()
         self.assertEqual(event_body["claims_created"], 1)
+        self.assertEqual(event_body["claims"][0]["payout_status"], "processed")
+        self.assertIn("anomaly_band", event_body["claims"][0])
+        self.assertIn("location_match", event_body["claims"][0]["validation_checks"])
         claim_id = event_body["claims"][0]["claim_id"]
 
         single_claim_response = self.client.get(f"/api/claims/{claim_id}")
@@ -136,6 +139,77 @@ class GigSurakshaApiTests(unittest.TestCase):
         self.assertEqual(admin_body["total_events"], 1)
         self.assertEqual(admin_body["total_claims"], 1)
         self.assertEqual(admin_body["claims_by_status"]["approved"], 1)
+        self.assertGreaterEqual(len(admin_body["forecast_cards"]), 1)
+
+    def test_heat_stress_and_trigger_monitor_flow(self) -> None:
+        worker_response = self.client.post(
+            "/api/workers/register",
+            json={
+                "name": "Asha Singh",
+                "phone": "9988776655",
+                "city": "Mumbai",
+                "platform": "Zepto",
+                "zone": "Andheri East",
+                "shift_type": "afternoon",
+                "weekly_earnings": 7000,
+                "weekly_active_hours": 42,
+                "upi_id": "asha@okhdfcbank",
+            },
+        )
+        self.assertEqual(worker_response.status_code, 200)
+        worker_id = worker_response.json()["worker_id"]
+
+        policy_response = self.client.post(
+            "/api/policies/create",
+            json={
+                "worker_id": worker_id,
+                "coverage_tier": "comprehensive",
+                "feature_context": {"reference_date": "2026-04-03"},
+                "valid_from": "2026-04-01T00:00:00",
+            },
+        )
+        self.assertEqual(policy_response.status_code, 200)
+
+        heat_response = self.client.post(
+            "/api/events/simulate",
+            json={
+                "event_type": "heat_stress",
+                "city": "Mumbai",
+                "zone": "Andheri East",
+                "severity": "high",
+                "start_time": "2026-04-03T13:00:00",
+                "duration_hours": 3,
+                "source": "frontend_demo",
+                "verified": True,
+                "metadata": {
+                    "trigger": "demo",
+                    "reported_city": "Mumbai",
+                    "reported_zone": "Andheri East",
+                    "activity_status": "active_session_confirmed",
+                    "location_confidence_score": 0.94,
+                    "session_inconsistency_score": 0.1,
+                },
+            },
+        )
+        self.assertEqual(heat_response.status_code, 200)
+        heat_body = heat_response.json()
+        self.assertEqual(heat_body["event"]["event_type"], "heat_stress")
+        self.assertEqual(heat_body["claims_created"], 1)
+
+        monitor_response = self.client.post(
+            "/api/triggers/monitor/run",
+            json={
+                "reference_time": "2026-04-03T15:00:00",
+                "sources": ["platform_mock"],
+                "dry_run": False,
+            },
+        )
+        self.assertEqual(monitor_response.status_code, 200)
+        monitor_body = monitor_response.json()
+        self.assertEqual(monitor_body["sources_used"], ["platform_mock"])
+        self.assertEqual(monitor_body["policies_scanned"], 1)
+        self.assertGreaterEqual(len(monitor_body["candidate_events"]), 1)
+        self.assertGreaterEqual(monitor_body["events_created"], 1)
 
 
 if __name__ == "__main__":

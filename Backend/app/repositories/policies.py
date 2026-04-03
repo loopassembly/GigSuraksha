@@ -29,5 +29,12 @@ class PolicyRepository:
             sort=("created_at", -1),
         )
 
+    async def list_active(self) -> list[dict[str, Any]]:
+        return await self.database.find_many(
+            self.collection_name,
+            {"status": "active"},
+            sort=("created_at", -1),
+        )
+
     async def count_active(self) -> int:
         return await self.database.count_documents(self.collection_name, {"status": "active"})

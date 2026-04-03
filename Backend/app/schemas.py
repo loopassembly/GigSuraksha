@@ -10,6 +10,8 @@ RiskBand = Literal["LOW", "MEDIUM", "HIGH"]
 PolicyStatus = Literal["active", "expired", "cancelled"]
 ClaimStatus = Literal["auto_initiated", "approved", "rejected"]
 SeverityLevel = Literal["low", "moderate", "high", "severe"]
+AnomalyBand = Literal["LOW", "MEDIUM", "HIGH"]
+PayoutStatus = Literal["pending", "processed", "failed"]
 
 
 class RiskPredictRequest(BaseModel):
@@ -213,6 +215,16 @@ class ClaimResponse(BaseModel):
     payout_estimate: float
     status: str
     validation_checks: dict[str, bool]
+    anomaly_score: float
+    anomaly_band: AnomalyBand
+    anomaly_reasons: list[str]
+    activity_snapshot: dict[str, Any]
+    payout_status: PayoutStatus
+    payout_channel: str | None = None
+    payout_reference: str | None = None
+    payout_processed_at: datetime | None = None
+    payout_amount: float
+    payout_metadata: dict[str, Any]
     created_at: datetime
     updated_at: datetime
 
@@ -237,6 +249,35 @@ class ForecastCardResponse(BaseModel):
     expected_disrupted_hours: float
     suggested_weekly_premium: int
     model_version: str
+
+
+class TriggerMonitorRequest(BaseModel):
+    reference_time: datetime | None = None
+    sources: list[str] = Field(default_factory=list)
+    dry_run: bool = False
+
+
+class TriggerMonitorEventResponse(BaseModel):
+    event_type: str
+    city: str
+    zone: str
+    severity: SeverityLevel
+    start_time: datetime
+    duration_hours: float
+    source: str
+    metadata: dict[str, Any]
+
+
+class TriggerMonitorResponse(BaseModel):
+    monitor_run_id: str
+    reference_time: datetime
+    dry_run: bool
+    sources_used: list[str]
+    policies_scanned: int
+    candidate_events: list[TriggerMonitorEventResponse]
+    events_created: int
+    claims_created: int
+    events: list[EventResponse]
 
 
 class AdminSummaryResponse(BaseModel):

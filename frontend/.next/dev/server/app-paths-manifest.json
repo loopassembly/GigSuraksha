@@ -1,4 +1,9 @@
 {
+  "/admin/page": "app/admin/page.js",
+  "/claim/page": "app/claim/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
   "/onboarding/page": "app/onboarding/page.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/policy/page": "app/policy/page.js",
+  "/simulate/page": "app/simulate/page.js"
 }

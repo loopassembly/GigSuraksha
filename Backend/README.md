@@ -510,12 +510,85 @@ Response shape:
         "zone_match": true,
         "shift_overlap": true,
         "event_verified": true,
-        "duplicate_claim": false
+        "duplicate_claim": false,
+        "location_match": true,
+        "activity_validation": true
+      },
+      "anomaly_score": 0.06,
+      "anomaly_band": "LOW",
+      "anomaly_reasons": [
+        "claim near weekly payout cap"
+      ],
+      "activity_snapshot": {
+        "location_confidence_score": 0.96,
+        "session_inconsistency_score": 0.08,
+        "activity_status": "policy_bound_context",
+        "reported_city": "Bengaluru",
+        "reported_zone": "Koramangala",
+        "peer_burst_claim_count": 0,
+        "shared_upi_worker_count": 1
+      },
+      "payout_status": "processed",
+      "payout_channel": "upi_simulator",
+      "payout_reference": "pay_demo_20260403_8f91",
+      "payout_processed_at": "2026-04-03T12:10:01",
+      "payout_amount": 382.5,
+      "payout_metadata": {
+        "processor": "upi_simulator",
+        "beneficiary_upi_id": "ravi@oksbi"
       },
       "created_at": "2026-04-03T12:10:00",
       "updated_at": "2026-04-03T12:10:00"
     }
   ]
+}
+```
+
+### `POST /api/triggers/monitor/run`
+
+Purpose:
+
+- scans active policies against mocked weather, traffic, and platform trigger sources
+- auto-creates verified events for matching candidates
+- immediately runs the same rule-based claim creation flow used by manual simulations
+
+Request example:
+
+```json
+{
+  "reference_time": "2026-04-03T15:00:00",
+  "sources": ["weather_mock", "traffic_mock", "platform_mock"],
+  "dry_run": false
+}
+```
+
+Response shape:
+
+```json
+{
+  "monitor_run_id": "mon_20260403150000_c1a2",
+  "reference_time": "2026-04-03T15:00:00",
+  "dry_run": false,
+  "sources_used": ["weather_mock", "traffic_mock", "platform_mock"],
+  "policies_scanned": 4,
+  "candidate_events": [
+    {
+      "event_type": "platform_outage",
+      "city": "Bengaluru",
+      "zone": "Koramangala",
+      "severity": "moderate",
+      "start_time": "2026-04-03T18:00:00",
+      "duration_hours": 1.5,
+      "source": "platform_mock",
+      "metadata": {
+        "integration_kind": "platform_api_mock",
+        "trigger": "automated_monitor"
+      }
+    }
+  ],
+  "events_created": 1,
+  "claims_created": 1,
+  "events": []
 }
 ```
 
@@ -543,7 +616,9 @@ Response:
     {
       "claim_id": "clm_20260403121001_fa78",
       "status": "approved",
-      "payout_estimate": 382.5
+      "payout_amount": 382.5,
+      "payout_status": "processed",
+      "anomaly_band": "LOW"
     }
   ]
 }
@@ -605,6 +680,11 @@ Response shape:
 }
 ```
 
+Notes:
+
+- `forecast_cards` are generated live from active policies when available
+- if no active policies exist, the backend falls back to the seeded demo quote requests and re-scores them through the ML model
+
 ### `GET /api/demo/quote-requests`
 
 Purpose:
@@ -637,6 +717,8 @@ Response:
 - `samples/policy_create_response.json`
 - `samples/event_simulation_request.json`
 - `samples/event_simulation_response.json`
+- `samples/trigger_monitor_request.json`
+- `samples/trigger_monitor_response.json`
 - `samples/admin_summary_response.json`
 
 ## Key code locations
@@ -650,7 +732,10 @@ Response:
 - Worker service: `app/services/worker_service.py`
 - Policy service: `app/services/policy_service.py`
 - Event and auto-claim flow: `app/services/event_service.py`
+- Automated trigger monitor: `app/services/trigger_service.py`
 - Claim read services: `app/services/claim_service.py`
+- Fraud and integrity scoring: `app/services/fraud_service.py`
+- Simulated payout processor: `app/services/payout_service.py`
 - Admin dashboard summary: `app/services/admin_service.py`
 - Shift overlap helper: `app/utils/shifts.py`
 

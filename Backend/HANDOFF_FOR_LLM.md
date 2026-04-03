@@ -8,9 +8,10 @@ The backend now supports the full Phase 2 MVP flow:
 2. ML-backed quote generation
 3. policy creation and retrieval
 4. disruption event simulation
-5. automatic claim creation
-6. claim retrieval
-7. admin summary
+5. automated trigger monitoring
+6. automatic claim creation
+7. claim retrieval
+8. admin summary
 
 ## Deployed API
 
@@ -33,6 +34,8 @@ Important:
 - claim logic is separate from ML
 - ML is only used for weekly risk scoring and quote loading
 - final quote calculation remains deterministic
+- claim integrity scoring is rule-based and explainable
+- payout processing is simulated through a UPI-style mock processor
 
 ## Frontend origin detection and CORS
 
@@ -64,6 +67,7 @@ Additional deployed origins can still come from:
 - `GET /api/policies/{policy_id}`
 - `GET /api/policies/worker/{worker_id}`
 - `POST /api/events/simulate`
+- `POST /api/triggers/monitor/run`
 - `GET /api/claims/{claim_id}`
 - `GET /api/claims/worker/{worker_id}`
 - `GET /api/claims`
@@ -118,6 +122,19 @@ Payout formula:
 min(ProtectedHourlyIncome * AffectedHours * SeverityMultiplier, MaxWeeklyPayout)
 ```
 
+Additional claim controls:
+
+- duplicate claim prevention
+- location match validation from event metadata
+- activity/session validation from event metadata
+- anomaly scoring bands: `LOW`, `MEDIUM`, `HIGH`
+- simulated payout processing fields on approved claims:
+  - `payout_status`
+  - `payout_channel`
+  - `payout_reference`
+  - `payout_processed_at`
+  - `payout_amount`
+
 ## Key files
 
 Core backend:
@@ -142,7 +159,10 @@ Services:
 - `Backend/app/services/worker_service.py`
 - `Backend/app/services/policy_service.py`
 - `Backend/app/services/event_service.py`
+- `Backend/app/services/trigger_service.py`
 - `Backend/app/services/claim_service.py`
+- `Backend/app/services/fraud_service.py`
+- `Backend/app/services/payout_service.py`
 - `Backend/app/services/admin_service.py`
 
 Utilities:
@@ -172,6 +192,8 @@ Samples:
 - `Backend/samples/policy_create_response.json`
 - `Backend/samples/event_simulation_request.json`
 - `Backend/samples/event_simulation_response.json`
+- `Backend/samples/trigger_monitor_request.json`
+- `Backend/samples/trigger_monitor_response.json`
 - `Backend/samples/admin_summary_response.json`
 
 Docs:
@@ -187,7 +209,7 @@ Static validation:
 Automated tests:
 
 - `PYTHONPATH=Backend python3.10 -m unittest discover -s Backend/tests -p 'test_*.py'`
-- result: `Ran 4 tests ... OK`
+- result: `Ran 5 tests ... OK`
 
 Verified coverage in tests:
 
@@ -197,8 +219,11 @@ Verified coverage in tests:
 - worker registration
 - policy creation and retrieval
 - event simulation
+- heat-stress live event support
+- automated trigger monitor
 - claim auto-creation and retrieval
 - admin summary
+- claim anomaly and payout fields
 
 Manual end-to-end smoke flow also succeeded with an in-memory database:
 
@@ -224,4 +249,4 @@ Set secrets via Fly instead of source files, especially:
 
 ## Honest caveat
 
-This machine validated the Phase 2 backend with the in-memory adapter. The MongoDB path is implemented for `motor`, but a live Atlas round-trip was not exercised in this handoff pass.
+The codebase now includes the automated trigger monitor, live heat-stress simulation support, rule-based anomaly scoring, and simulated payout processing. If the deployed Fly app should expose those new features, it needs a fresh deploy of the current backend code.

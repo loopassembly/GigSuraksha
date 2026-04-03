@@ -1,167 +1,157 @@
-// ─── API Client ──────────────────────────────────────────────
-// Centralised fetch wrapper for the GigSuraksha backend.
-// Base URL is read from NEXT_PUBLIC_API_BASE_URL with a safe default.
+import type {
+  AdminSummary,
+  ApiErrorShape,
+  BackendClaim,
+  BackendClaimsResponse,
+  BackendEventSimulationResponse,
+  BackendPolicy,
+  BackendPoliciesResponse,
+  BackendQuoteResponse,
+  TriggerMonitorRunResponse,
+  BackendWorker,
+  BackendShiftType,
+  CoverageTierId,
+} from './types';
 
-const BASE_URL =
-  (typeof window !== 'undefined'
-    ? process.env.NEXT_PUBLIC_API_BASE_URL
-    : process.env.NEXT_PUBLIC_API_BASE_URL) || 'https://gigsuraksha-backend.fly.dev';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ||
+  'https://gigsuraksha-backend.fly.dev';
 
-// ─── Generic helpers ─────────────────────────────────────────
+export class ApiError extends Error {
+  status: number;
+  detail?: string;
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) },
-    ...options,
+  constructor(message: string, status: number, detail?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+    cache: 'no-store',
   });
 
-  if (!res.ok) {
-    let detail = res.statusText;
+  if (!response.ok) {
+    let payload: ApiErrorShape | null = null;
     try {
-      const body = await res.json();
-      detail = body.detail || body.message || JSON.stringify(body);
+      payload = (await response.json()) as ApiErrorShape;
     } catch {
-      // ignore JSON parse errors
+      payload = null;
     }
-    throw new Error(`API ${res.status}: ${detail}`);
+    const detail = formatErrorDetail(payload?.detail) || payload?.message || `Request failed with status ${response.status}`;
+    throw new ApiError(detail, response.status, detail);
   }
 
-  return res.json() as Promise<T>;
+  return (await response.json()) as T;
 }
 
-function get<T>(path: string) {
-  return request<T>(path, { method: 'GET' });
+function formatErrorDetail(detail: unknown): string | undefined {
+  if (!detail) {
+    return undefined;
+  }
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === 'string') {
+          return item;
+        }
+        if (item && typeof item === 'object') {
+          const message = 'msg' in item ? String(item.msg) : 'Validation error';
+          const location = Array.isArray((item as { loc?: unknown[] }).loc)
+            ? (item as { loc?: unknown[] }).loc?.filter(Boolean).join(' > ')
+            : '';
+          return location ? `${location}: ${message}` : message;
+        }
+        return String(item);
+      })
+      .join('; ');
+  }
+  return String(detail);
 }
-
-function post<T>(path: string, body: unknown) {
-  return request<T>(path, { method: 'POST', body: JSON.stringify(body) });
-}
-
-// ─── Health ──────────────────────────────────────────────────
 
 export function checkHealth() {
-  return get<{ status: string }>('/health');
+  return request<{ status: string }>('/health');
 }
 
-// ─── Workers ─────────────────────────────────────────────────
-
-export interface RegisterWorkerPayload {
+export function registerWorker(data: {
   name: string;
   phone: string;
   city: string;
   platform: string;
   zone: string;
-  shift_type: string;
+  shift_type: BackendShiftType;
   weekly_earnings: number;
   weekly_active_hours: number;
   upi_id: string;
-}
-
-export function registerWorker(data: RegisterWorkerPayload) {
-  return post<Record<string, unknown>>('/api/workers/register', data);
+}) {
+  return request<BackendWorker>('/api/workers/register', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 export function getWorker(workerId: string) {
-  return get<Record<string, unknown>>(`/api/workers/${workerId}`);
+  return request<BackendWorker>(`/api/workers/${workerId}`);
 }
 
-// ─── Quotes ──────────────────────────────────────────────────
-
-export interface QuotePayload {
+export function generateQuote(payload: {
   worker_profile: {
     city: string;
     zone: string;
-    shift_type: string;
-    coverage_tier: string;
+    shift_type: BackendShiftType;
+    coverage_tier: CoverageTierId;
     weekly_earnings: number;
     weekly_active_hours: number;
   };
-  feature_context: {
-    reference_date: string;
-  };
+  feature_context?: Record<string, unknown>;
+}) {
+  return request<BackendQuoteResponse>('/api/quote/generate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
-export interface QuoteRiskSummary {
-  risk_score: number;
-  risk_band: string;
-  expected_disrupted_hours: number;
-  premium_loading: number;
-  top_risk_drivers: Array<{ driver: string; score: number }>;
-  zone_risk_band: string;
-  zone_baseline_risk_score: number;
-}
-
-export interface QuotePremiumBreakdown {
-  base_premium: number;
-  zone_risk_loading: number;
-  shift_exposure_loading: number;
-  coverage_factor: number;
-  ml_risk_loading: number;
-  safe_zone_discount: number;
-  final_weekly_premium: number;
-}
-
-export interface QuoteCoverageSummary {
-  coverage_tier: string;
-  coverage_percent: number;
-  max_weekly_payout: number;
-  insured_shift_hours_per_week: number;
-  protected_hours_basis: string;
-  protected_weekly_income: number;
-  protected_hourly_income: number;
-}
-
-export interface QuoteResponse {
-  model_version: string;
-  worker_profile: Record<string, unknown>;
-  risk_summary: QuoteRiskSummary;
-  premium_breakdown: QuotePremiumBreakdown;
-  coverage_summary: QuoteCoverageSummary;
-}
-
-export function generateQuote(payload: QuotePayload) {
-  return post<QuoteResponse>('/api/quote/generate', payload);
-}
-
-// ─── Policies ────────────────────────────────────────────────
-
-export interface CreatePolicyByWorkerPayload {
-  worker_id: string;
-  coverage_tier: string;
-  feature_context?: { reference_date: string };
-}
-
-export interface CreatePolicyInlinePayload {
-  worker_profile: {
-    name: string;
-    phone: string;
+export function createPolicy(payload: {
+  worker_id?: string;
+  coverage_tier?: CoverageTierId;
+  worker_profile?: {
     city: string;
-    platform: string;
     zone: string;
-    shift_type: string;
+    shift_type: BackendShiftType;
+    coverage_tier: CoverageTierId;
     weekly_earnings: number;
     weekly_active_hours: number;
-    upi_id: string;
   };
-  coverage_tier: string;
-  feature_context?: { reference_date: string };
-}
-
-export function createPolicy(payload: CreatePolicyByWorkerPayload | CreatePolicyInlinePayload) {
-  return post<Record<string, unknown>>('/api/policies/create', payload);
+  feature_context?: Record<string, unknown>;
+  valid_from?: string;
+}) {
+  return request<BackendPolicy>('/api/policies/create', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getPolicy(policyId: string) {
-  return get<Record<string, unknown>>(`/api/policies/${policyId}`);
+  return request<BackendPolicy>(`/api/policies/${policyId}`);
 }
 
-export function getWorkerPolicies(workerId: string) {
-  return get<Record<string, unknown>>(`/api/policies/worker/${workerId}`);
+export async function getWorkerPolicies(workerId: string) {
+  const response = await request<BackendPoliciesResponse>(`/api/policies/worker/${workerId}`);
+  return response.policies;
 }
 
-// ─── Events / Simulation ────────────────────────────────────
-
-export interface SimulateEventPayload {
+export function simulateEvent(payload: {
   event_type: string;
   city: string;
   zone: string;
@@ -170,51 +160,41 @@ export interface SimulateEventPayload {
   duration_hours: number;
   source: string;
   verified: boolean;
-  metadata: Record<string, string>;
+  metadata?: Record<string, unknown>;
+}) {
+  return request<BackendEventSimulationResponse>('/api/events/simulate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
-
-export function simulateEvent(payload: SimulateEventPayload) {
-  return post<Record<string, unknown>>('/api/events/simulate', payload);
-}
-
-// ─── Claims ──────────────────────────────────────────────────
 
 export function getClaim(claimId: string) {
-  return get<Record<string, unknown>>(`/api/claims/${claimId}`);
+  return request<BackendClaim>(`/api/claims/${claimId}`);
 }
 
-export function getWorkerClaims(workerId: string) {
-  return get<Record<string, unknown>>(`/api/claims/worker/${workerId}`);
+export async function getWorkerClaims(workerId: string) {
+  const response = await request<BackendClaimsResponse>(`/api/claims/worker/${workerId}`);
+  return response.claims;
 }
 
-export function getAllClaims() {
-  return get<Record<string, unknown>>('/api/claims');
-}
-
-// ─── Admin ───────────────────────────────────────────────────
-
-export interface AdminSummary {
-  total_workers: number;
-  total_active_policies: number;
-  total_events: number;
-  total_claims: number;
-  claims_by_status: Record<string, number>;
-  claims_by_event_type: Record<string, number>;
-  recent_events: Array<Record<string, unknown>>;
-  recent_claims: Array<Record<string, unknown>>;
-  forecast_cards: Array<{
-    city: string;
-    zone: string;
-    shift_type: string;
-    coverage_tier: string;
-    risk_band: string;
-    risk_score: number;
-    expected_disrupted_hours: number;
-    suggested_weekly_premium: number;
-    model_version: string;
-  }>;
+export async function getAllClaims() {
+  const response = await request<BackendClaimsResponse>('/api/claims');
+  return response.claims;
 }
 
 export function getAdminSummary() {
-  return get<AdminSummary>('/api/admin/summary');
+  return request<AdminSummary>('/api/admin/summary');
 }
+
+export function runTriggerMonitor(payload?: {
+  reference_time?: string;
+  sources?: string[];
+  dry_run?: boolean;
+}) {
+  return request<TriggerMonitorRunResponse>('/api/triggers/monitor/run', {
+    method: 'POST',
+    body: JSON.stringify(payload ?? {}),
+  });
+}
+
+export { API_BASE_URL };

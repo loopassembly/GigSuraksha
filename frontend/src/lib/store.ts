@@ -1,97 +1,80 @@
-// ─── Local State Persistence ─────────────────────────────────
-// Simple localStorage wrappers for demo-safe state management.
-// No auth exists — all user state is persisted client-side.
+import type { BackendPolicy, BackendQuoteResponse, StoredEvent, StoredWorker } from './types';
 
-const KEYS = {
+const STORAGE_KEYS = {
   worker: 'gigsuraksha_worker',
   quote: 'gigsuraksha_quote',
   policy: 'gigsuraksha_policy',
   event: 'gigsuraksha_event',
 } as const;
 
-// ─── Generic helpers ─────────────────────────────────────────
-
-function save(key: string, data: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch {
-    // localStorage full or unavailable
-  }
+function canUseStorage() {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
 
-function load<T>(key: string): T | null {
+function readJson<T>(key: string): T | null {
+  if (!canUseStorage()) {
+    return null;
+  }
+  const value = window.localStorage.getItem(key);
+  if (!value) {
+    return null;
+  }
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
+    return JSON.parse(value) as T;
   } catch {
     return null;
   }
 }
 
-function remove(key: string) {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    // ignore
+function writeJson<T>(key: string, value: T) {
+  if (!canUseStorage()) {
+    return;
   }
+  window.localStorage.setItem(key, JSON.stringify(value));
 }
 
-// ─── Worker ──────────────────────────────────────────────────
+function remove(key: string) {
+  if (!canUseStorage()) {
+    return;
+  }
+  window.localStorage.removeItem(key);
+}
 
-export interface StoredWorker {
-  worker_id: string;
-  name: string;
-  phone: string;
-  city: string;
-  platform: string;
-  zone: string;
-  shift_type: string;
-  weekly_earnings: number;
-  weekly_active_hours: number;
-  upi_id: string;
-  [key: string]: unknown;
+export function getWorker() {
+  return readJson<StoredWorker>(STORAGE_KEYS.worker);
 }
 
 export function saveWorker(worker: StoredWorker) {
-  save(KEYS.worker, worker);
+  writeJson(STORAGE_KEYS.worker, worker);
 }
 
-export function getWorker(): StoredWorker | null {
-  return load<StoredWorker>(KEYS.worker);
+export function getQuote() {
+  return readJson<BackendQuoteResponse>(STORAGE_KEYS.quote);
 }
 
-// ─── Quote ───────────────────────────────────────────────────
-
-export function saveQuote(quote: Record<string, unknown>) {
-  save(KEYS.quote, quote);
+export function saveQuote(quote: BackendQuoteResponse) {
+  writeJson(STORAGE_KEYS.quote, quote);
 }
 
-export function getQuote(): Record<string, unknown> | null {
-  return load<Record<string, unknown>>(KEYS.quote);
+export function getPolicy() {
+  return readJson<BackendPolicy>(STORAGE_KEYS.policy);
 }
 
-// ─── Policy ──────────────────────────────────────────────────
-
-export function savePolicy(policy: Record<string, unknown>) {
-  save(KEYS.policy, policy);
+export function savePolicy(policy: BackendPolicy) {
+  writeJson(STORAGE_KEYS.policy, policy);
 }
 
-export function getPolicy(): Record<string, unknown> | null {
-  return load<Record<string, unknown>>(KEYS.policy);
+export function getEvent() {
+  return readJson<StoredEvent>(STORAGE_KEYS.event);
 }
 
-// ─── Event ───────────────────────────────────────────────────
-
-export function saveEvent(event: Record<string, unknown>) {
-  save(KEYS.event, event);
+export function saveEvent(event: StoredEvent) {
+  writeJson(STORAGE_KEYS.event, event);
 }
-
-export function getEvent(): Record<string, unknown> | null {
-  return load<Record<string, unknown>>(KEYS.event);
-}
-
-// ─── Reset ───────────────────────────────────────────────────
 
 export function clearAll() {
-  Object.values(KEYS).forEach(remove);
+  remove(STORAGE_KEYS.worker);
+  remove(STORAGE_KEYS.quote);
+  remove(STORAGE_KEYS.policy);
+  remove(STORAGE_KEYS.event);
 }

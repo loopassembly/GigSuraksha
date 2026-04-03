@@ -6,351 +6,343 @@ import Card, { CardHeader } from '@/components/Card';
 import StatCard from '@/components/StatCard';
 import Badge from '@/components/Badge';
 import Button from '@/components/Button';
-import { getWorkerPolicies, getWorkerClaims } from '@/lib/api';
-import { getWorker, getEvent } from '@/lib/store';
-import { DISRUPTION_TYPE_INFO } from '@/lib/constants';
+import { ApiError, getAdminSummary, getWorkerClaims, getWorkerPolicies } from '@/lib/api';
 import {
-  Shield,
-  IndianRupee,
-  Clock,
+  formatCurrencyValue,
+  formatDateRange,
+  formatDateTime,
+  formatNumber,
+  getClaimStatusBadgeVariant,
+  getEventInfo,
+  getPolicyStatusBadgeVariant,
+  getShiftLabel,
+} from '@/lib/backend-helpers';
+import { getWorker } from '@/lib/store';
+import type { AdminSummary, BackendClaim, BackendPolicy, StoredWorker } from '@/lib/types';
+import {
   AlertTriangle,
   ArrowRight,
   CalendarCheck,
+  Clock,
+  IndianRupee,
+  Shield,
   TrendingUp,
-  Loader2,
-  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
-}
-
 export default function DashboardPage() {
-  const [loading, setLoading] = useState(true);
-  const [worker, setWorker] = useState<ReturnType<typeof getWorker>>(null);
-  const [policy, setPolicy] = useState<Record<string, unknown> | null>(null);
-  const [claims, setClaims] = useState<Record<string, unknown>[]>([]);
-  const [lastEvent, setLastEvent] = useState<Record<string, unknown> | null>(null);
+  const [worker, setWorker] = useState<StoredWorker | null>(null);
+  const [policy, setPolicy] = useState<BackendPolicy | null>(null);
+  const [claims, setClaims] = useState<BackendClaim[]>([]);
+  const [adminSummary, setAdminSummary] = useState<AdminSummary | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const w = getWorker();
-    setWorker(w);
-
-    const evt = getEvent();
-    setLastEvent(evt);
-
-    if (!w?.worker_id) {
-      setLoading(false);
-      return;
-    }
-
-    async function fetchData() {
-      try {
-        // Fetch policy
-        const policyRes = await getWorkerPolicies(w!.worker_id);
-        const policyList = Array.isArray(policyRes)
-          ? policyRes
-          : (policyRes as Record<string, unknown[]>).policies ?? [policyRes];
-        if (policyList.length > 0) {
-          setPolicy(policyList[0] as Record<string, unknown>);
-        }
-      } catch { /* silently ignore */ }
-
-      try {
-        // Fetch claims
-        const claimsRes = await getWorkerClaims(w!.worker_id);
-        const claimsList = Array.isArray(claimsRes)
-          ? claimsRes
-          : (claimsRes as Record<string, unknown[]>).claims ?? [claimsRes];
-        setClaims(claimsList as Record<string, unknown>[]);
-      } catch { /* silently ignore */ }
-
-      setLoading(false);
-    }
-
-    fetchData();
+    setWorker(getWorker());
+    setIsReady(true);
   }, []);
 
-  if (loading) {
-    return (
-      <>
-        <Header />
-        <main className="flex-1 max-w-5xl mx-auto px-4 py-16 w-full flex flex-col items-center justify-center gap-4">
-          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          <p className="text-[14px] text-text-secondary">Loading dashboard…</p>
-        </main>
-      </>
-    );
-  }
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+    const workerId = worker?.worker_id;
+    if (!workerId) {
+      setIsLoading(false);
+      return;
+    }
+    const stableWorkerId = workerId;
 
-  if (!worker) {
-    return (
-      <>
-        <Header />
-        <main className="flex-1 max-w-5xl mx-auto px-4 py-16 w-full flex flex-col items-center justify-center gap-4">
-          <Shield className="w-10 h-10 text-text-muted opacity-60" />
-          <p className="text-[16px] font-semibold text-text-primary">Not registered yet</p>
-          <p className="text-[14px] text-text-secondary">Complete registration to access your dashboard.</p>
-          <Link href="/onboarding">
-            <Button>Get Started <ArrowRight className="w-4 h-4" /></Button>
-          </Link>
-        </main>
-      </>
-    );
-  }
+    let cancelled = false;
 
-  // Derive stats
-  const weeklyPremium = Number(policy?.weekly_premium || policy?.final_weekly_premium || 0);
-  const maxPayout = Number(policy?.max_weekly_payout || 0);
-  const protectedIncome = Number(policy?.protected_weekly_income || 0);
-  const coverageTier = (policy?.coverage_tier || 'standard') as string;
-  const policyStatus = (policy?.status || 'active') as string;
-  const policyId = (policy?.policy_id || policy?.id || '—') as string;
-  const zone = (policy?.zone || worker.zone || '—') as string;
-  const shiftType = (policy?.shift_type || worker.shift_type || '—') as string;
+    async function loadDashboard() {
+      setIsLoading(true);
+      setError(null);
 
-  const paidClaims = claims.filter((c) => ['paid', 'approved'].includes((c.status as string) || ''));
-  const totalPaid = paidClaims.reduce((s, c) => s + Number(c.estimated_payout || c.payout_amount || 0), 0);
+      try {
+        const [policies, workerClaims, summary] = await Promise.all([
+          getWorkerPolicies(stableWorkerId),
+          getWorkerClaims(stableWorkerId),
+          getAdminSummary(),
+        ]);
 
-  // Recent disruptions: from lastEvent OR from claims event info
-  const hasEvents = lastEvent !== null;
-  const recentClaimsWithEvents = claims.slice(0, 3).filter((c) => c.event_type);
+        if (cancelled) {
+          return;
+        }
+
+        setPolicy(policies.find((item) => item.status === 'active') ?? policies[0] ?? null);
+        setClaims(
+          [...workerClaims].sort(
+            (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+          )
+        );
+        setAdminSummary(summary);
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
+        if (requestError instanceof ApiError) {
+          setError(requestError.detail || requestError.message);
+        } else {
+          setError('Unable to load the worker dashboard right now.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadDashboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, worker]);
+
+  const totalPaid = claims.reduce(
+    (sum, claim) => sum + (claim.payout_status === 'processed' ? claim.payout_amount : 0),
+    0
+  );
+  const recentEvents = adminSummary?.recent_events ?? [];
 
   return (
     <>
       <Header />
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 sm:py-10 w-full">
-        {/* Greeting */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-text-primary">
-              Welcome back, {worker.name || 'Worker'}
-            </h1>
-            <p className="text-[14px] text-text-secondary mt-0.5">
-              {policy ? 'Your income protection dashboard' : 'No active policy — get protected today'}
+        {isLoading ? (
+          <DashboardSkeleton />
+        ) : !worker ? (
+          <Card padding="lg">
+            <h1 className="text-xl font-bold text-text-primary">Register to Unlock Your Dashboard</h1>
+            <p className="text-[14px] text-text-secondary mt-1">
+              We need a registered worker profile before we can load your policy and claims from the deployed backend.
             </p>
-          </div>
-          {policy && (
-            <Link href="/policy">
-              <Button variant="outline" size="sm">
-                View Policy
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
-          )}
-        </div>
+            <div className="mt-4">
+              <Link href="/onboarding">
+                <Button>
+                  Go to Onboarding
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        ) : (
+          <>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Welcome back, {worker.name}</h1>
+                <p className="text-[14px] text-text-secondary mt-0.5">
+                  Your live protection dashboard for {worker.zone}, {worker.display_city}
+                </p>
+              </div>
+              <Link href="/policy">
+                <Button variant="outline" size="sm">
+                  View Policy
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Button>
+              </Link>
+            </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <StatCard
-            label="Weekly Premium"
-            value={weeklyPremium ? formatCurrency(weeklyPremium) : '—'}
-            icon={<IndianRupee className="w-4 h-4 text-primary" />}
-            subtitle={`${coverageTier} plan`}
-          />
-          <StatCard
-            label="Protected Income"
-            value={protectedIncome ? formatCurrency(protectedIncome) : '—'}
-            icon={<Shield className="w-4 h-4 text-primary" />}
-            subtitle="Per week"
-          />
-          <StatCard
-            label="Total Payouts"
-            value={totalPaid > 0 ? formatCurrency(totalPaid) : '₹0'}
-            icon={<TrendingUp className="w-4 h-4 text-primary" />}
-            subtitle={`${paidClaims.length} claim${paidClaims.length !== 1 ? 's' : ''} paid`}
-          />
-          <StatCard
-            label="Max Weekly Payout"
-            value={maxPayout ? formatCurrency(maxPayout) : '—'}
-            icon={<CalendarCheck className="w-4 h-4 text-primary" />}
-            subtitle="Weekly cap"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Area */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Active Policy */}
-            {policy ? (
-              <Card padding="lg">
-                <CardHeader
-                  title="Active Policy"
-                  action={
-                    <Badge variant={policyStatus === 'active' ? 'success' : 'muted'}>
-                      {policyStatus}
-                    </Badge>
-                  }
-                />
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-[13px]">
-                  <div>
-                    <span className="text-text-muted text-[11px] uppercase tracking-wide">Policy ID</span>
-                    <p className="font-medium text-text-primary mt-0.5 truncate">{policyId}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted text-[11px] uppercase tracking-wide">Zone</span>
-                    <p className="font-medium text-text-primary mt-0.5">{zone}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted text-[11px] uppercase tracking-wide">Shift</span>
-                    <p className="font-medium text-text-primary mt-0.5 capitalize">{shiftType.replace(/_/g, ' ')}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted text-[11px] uppercase tracking-wide">Coverage</span>
-                    <p className="font-medium text-text-primary mt-0.5 capitalize">{coverageTier}</p>
-                  </div>
-                </div>
-              </Card>
-            ) : (
-              <Card padding="lg">
-                <div className="py-6 text-center">
-                  <Shield className="w-10 h-10 text-text-muted opacity-40 mx-auto mb-3" />
-                  <p className="text-[15px] font-semibold text-text-primary mb-1">No Active Policy</p>
-                  <p className="text-[13px] text-text-secondary mb-4">Get a weekly protection quote to get started.</p>
-                  <Link href="/quote">
-                    <Button>Get a Quote <ArrowRight className="w-4 h-4" /></Button>
-                  </Link>
-                </div>
-              </Card>
+            {error && (
+              <div className="mb-6 px-3 py-2.5 rounded-lg bg-danger-light border border-danger/20 text-[13px] text-danger">
+                {error}
+              </div>
             )}
 
-            {/* Claim History */}
-            {claims.length > 0 && (
-              <Card padding="lg">
-                <CardHeader
-                  title="Claim History"
-                  subtitle="Your recent disruption claims and payouts"
-                  action={
-                    <Link href="/claim">
-                      <Button variant="ghost" size="sm">View All</Button>
-                    </Link>
-                  }
-                />
-                <div className="overflow-x-auto -mx-4 sm:-mx-5 px-4 sm:px-5">
-                  <table className="w-full text-[13px]">
-                    <thead>
-                      <tr className="text-left text-text-muted text-[11px] uppercase tracking-wider">
-                        <th className="pb-2 pr-3 font-medium">Event</th>
-                        <th className="pb-2 pr-3 font-medium">Zone</th>
-                        <th className="pb-2 pr-3 font-medium">Payout</th>
-                        <th className="pb-2 font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {claims.slice(0, 5).map((claim, i) => (
-                        <tr key={i}>
-                          <td className="py-3 pr-3 font-medium text-text-primary capitalize">
-                            {String(claim.event_type || '').replace(/_/g, ' ') || 'Disruption'}
-                          </td>
-                          <td className="py-3 pr-3 text-text-secondary">{(claim.zone || '—') as string}</td>
-                          <td className="py-3 pr-3 font-medium text-text-primary">
-                            {Number(claim.estimated_payout || claim.payout_amount || 0) > 0
-                              ? formatCurrency(Number(claim.estimated_payout || claim.payout_amount))
-                              : '—'}
-                          </td>
-                          <td className="py-3">
-                            <Badge
-                              variant={
-                                ['paid', 'approved'].includes((claim.status as string) || '')
-                                  ? 'success'
-                                  : (claim.status as string) === 'processing' || (claim.status as string) === 'eligible'
-                                  ? 'warning'
-                                  : (claim.status as string) === 'rejected'
-                                  ? 'danger'
-                                  : 'muted'
-                              }
-                            >
-                              {(claim.status || '—') as string}
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            )}
-          </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <StatCard
+                label="Weekly Premium"
+                value={policy ? formatCurrencyValue(policy.weekly_premium) : 'N/A'}
+                icon={<IndianRupee className="w-4 h-4 text-primary" />}
+                subtitle={policy ? `${policy.coverage_tier} plan` : 'No active policy'}
+              />
+              <StatCard
+                label="Protected Income"
+                value={policy ? formatCurrencyValue(policy.coverage_summary.protected_weekly_income) : 'N/A'}
+                icon={<Shield className="w-4 h-4 text-primary" />}
+                subtitle={policy ? `${policy.coverage_percent}% coverage` : 'Quote required'}
+              />
+              <StatCard
+                label="Claim Payouts"
+                value={formatCurrencyValue(totalPaid)}
+                icon={<TrendingUp className="w-4 h-4 text-primary" />}
+                subtitle={`${claims.length} total claims`}
+              />
+              <StatCard
+                label="Max Weekly Payout"
+                value={policy ? formatCurrencyValue(policy.max_weekly_payout) : 'N/A'}
+                icon={<CalendarCheck className="w-4 h-4 text-primary" />}
+                subtitle="Policy cap"
+              />
+            </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Recent Disruptions — only if events exist */}
-            {hasEvents && (
-              <Card padding="md">
-                <CardHeader title="Recent Disruptions" subtitle="Latest simulated event" />
-                <div className="space-y-3">
-                  {lastEvent && (
-                    <div className="p-3 rounded-lg border border-border bg-background">
-                      <div className="flex items-start justify-between mb-1">
-                        <p className="text-[13px] font-medium text-text-primary capitalize">
-                          {String(lastEvent.event_type || '').replace(/_/g, ' ')}
-                        </p>
-                        <Badge variant={(lastEvent.severity as string) === 'severe' ? 'danger' : (lastEvent.severity as string) === 'high' ? 'warning' : 'muted'}>
-                          {(lastEvent.severity || 'high') as string}
-                        </Badge>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <Card padding="lg">
+                  <CardHeader
+                    title="Active Policy"
+                    action={policy ? <Badge variant={getPolicyStatusBadgeVariant(policy.status)}>{policy.status}</Badge> : undefined}
+                  />
+                  {policy ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-[13px]">
+                      <div>
+                        <span className="text-text-muted text-[11px] uppercase tracking-wide">Policy ID</span>
+                        <p className="font-medium text-text-primary mt-0.5">{policy.policy_id}</p>
                       </div>
-                      <p className="text-[12px] text-text-secondary">{(lastEvent.zone || '') as string}, {(lastEvent.city || '') as string}</p>
-                      {lastEvent.duration_hours && (
-                        <p className="text-[11px] text-text-muted mt-1">{lastEvent.duration_hours as number}h duration</p>
-                      )}
+                      <div>
+                        <span className="text-text-muted text-[11px] uppercase tracking-wide">Zone</span>
+                        <p className="font-medium text-text-primary mt-0.5">{policy.zone}</p>
+                      </div>
+                      <div>
+                        <span className="text-text-muted text-[11px] uppercase tracking-wide">Insured Shift</span>
+                        <p className="font-medium text-text-primary mt-0.5">{getShiftLabel(policy.shift_type)}</p>
+                      </div>
+                      <div>
+                        <span className="text-text-muted text-[11px] uppercase tracking-wide">Validity</span>
+                        <p className="font-medium text-text-primary mt-0.5">
+                          {formatDateRange(policy.valid_from, policy.valid_to)}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[13px] font-medium text-text-primary">No active policy yet</p>
+                        <p className="text-[12px] text-text-secondary mt-0.5">
+                          Generate a quote and activate a policy to unlock automated claim protection.
+                        </p>
+                      </div>
                     </div>
                   )}
-                  {recentClaimsWithEvents.map((claim, i) => (
-                    <div key={i} className="p-3 rounded-lg border border-border bg-background">
-                      <div className="flex items-start justify-between mb-1">
-                        <p className="text-[13px] font-medium text-text-primary capitalize">
-                          {String(claim.event_type || '').replace(/_/g, ' ')}
-                        </p>
-                        <Badge variant={(claim.severity as string) === 'high' ? 'warning' : 'muted'}>
-                          {(claim.severity || 'high') as string}
-                        </Badge>
-                      </div>
-                      <p className="text-[12px] text-text-secondary">{(claim.zone || '—') as string}</p>
+                </Card>
+
+                <Card padding="lg">
+                  <CardHeader
+                    title="Claim History"
+                    subtitle="Live claims created from simulated disruptions"
+                    action={
+                      <Link href="/claim">
+                        <Button variant="ghost" size="sm">View Latest</Button>
+                      </Link>
+                    }
+                  />
+                  {claims.length > 0 ? (
+                    <div className="overflow-x-auto -mx-4 sm:-mx-5 px-4 sm:px-5">
+                      <table className="w-full text-[13px]">
+                        <thead>
+                          <tr className="text-left text-text-muted text-[11px] uppercase tracking-wider">
+                            <th className="pb-2 pr-3 font-medium">Date</th>
+                            <th className="pb-2 pr-3 font-medium">Disruption</th>
+                            <th className="pb-2 pr-3 font-medium">Hours</th>
+                            <th className="pb-2 pr-3 font-medium">Amount</th>
+                            <th className="pb-2 font-medium">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {claims.map((claim) => (
+                            <tr key={claim.claim_id}>
+                              <td className="py-3 pr-3 text-text-secondary">{formatDateTime(claim.created_at)}</td>
+                              <td className="py-3 pr-3 font-medium text-text-primary">{getEventInfo(claim.event_type).label}</td>
+                              <td className="py-3 pr-3 text-text-secondary">{formatNumber(claim.affected_hours, 1)}h</td>
+                              <td className="py-3 pr-3 font-medium text-text-primary">
+                                {formatCurrencyValue(claim.payout_amount)}
+                              </td>
+                              <td className="py-3">
+                                <Badge variant={getClaimStatusBadgeVariant(claim.status)}>{claim.status}</Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-
-            {!hasEvents && recentClaimsWithEvents.length === 0 && (
-              <Card padding="md">
-                <CardHeader title="Recent Disruptions" />
-                <div className="py-4 text-center">
-                  <p className="text-[13px] text-text-muted">No disruptions recorded yet</p>
-                </div>
-              </Card>
-            )}
-
-            {/* Quick Actions */}
-            <Card padding="md">
-              <CardHeader title="Quick Actions" />
-              <div className="space-y-2">
-                <Link href="/simulate" className="block">
-                  <Button variant="outline" size="sm" fullWidth>
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    Simulate Disruption
-                  </Button>
-                </Link>
-                <Link href="/claim" className="block">
-                  <Button variant="outline" size="sm" fullWidth>
-                    <Clock className="w-3.5 h-3.5" />
-                    View Latest Claim
-                  </Button>
-                </Link>
-                {!policy && (
-                  <Link href="/quote" className="block">
-                    <Button size="sm" fullWidth>
-                      <Zap className="w-3.5 h-3.5" />
-                      Get Protected
-                    </Button>
-                  </Link>
-                )}
+                  ) : (
+                    <p className="text-[13px] text-text-secondary">
+                      No live claims yet. Use the simulation page to trigger a disruption once your policy is active.
+                    </p>
+                  )}
+                </Card>
               </div>
-            </Card>
-          </div>
-        </div>
+
+              <div className="space-y-6">
+                <Card padding="md">
+                  <CardHeader title="Recent Disruptions" subtitle="Latest backend events" />
+                  {recentEvents.length > 0 ? (
+                    <div className="space-y-3">
+                      {recentEvents.map((event) => (
+                        <div key={event.event_id} className="p-3 rounded-lg border border-border bg-background">
+                          <div className="flex items-start justify-between mb-1">
+                            <p className="text-[13px] font-medium text-text-primary">{getEventInfo(event.event_type).label}</p>
+                            <Badge variant={event.severity === 'severe' ? 'danger' : event.severity === 'high' ? 'warning' : 'muted'}>
+                              {event.severity}
+                            </Badge>
+                          </div>
+                          <p className="text-[12px] text-text-secondary">{event.zone}, {event.city}</p>
+                          <p className="text-[11px] text-text-muted mt-1">
+                            {formatNumber(event.duration_hours, 1)}h • {formatDateTime(event.created_at)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[12px] text-text-secondary">No recent live events available yet.</p>
+                  )}
+                </Card>
+
+                <Card padding="md">
+                  <CardHeader title="Quick Actions" />
+                  <div className="space-y-2">
+                    <Link href="/simulate" className="block">
+                      <Button variant="outline" size="sm" fullWidth>
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Simulate Disruption
+                      </Button>
+                    </Link>
+                    <Link href="/claim" className="block">
+                      <Button variant="outline" size="sm" fullWidth>
+                        <Clock className="w-3.5 h-3.5" />
+                        View Latest Claim
+                      </Button>
+                    </Link>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </>
+        )}
       </main>
     </>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-8 w-64 bg-border-light rounded" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="h-28 bg-border-light rounded-lg" />
+        <div className="h-28 bg-border-light rounded-lg" />
+        <div className="h-28 bg-border-light rounded-lg" />
+        <div className="h-28 bg-border-light rounded-lg" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card padding="lg">
+            <div className="h-20 bg-border-light rounded-lg" />
+          </Card>
+          <Card padding="lg">
+            <div className="h-48 bg-border-light rounded-lg" />
+          </Card>
+        </div>
+        <div className="space-y-6">
+          <Card padding="md">
+            <div className="h-40 bg-border-light rounded-lg" />
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 }

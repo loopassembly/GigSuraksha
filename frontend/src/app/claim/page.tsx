@@ -5,332 +5,411 @@ import Header from '@/components/Header';
 import Card, { CardHeader } from '@/components/Card';
 import Badge from '@/components/Badge';
 import Button from '@/components/Button';
-import { DISRUPTION_TYPE_INFO, SEVERITY_CONFIG } from '@/lib/constants';
-import { getWorkerClaims } from '@/lib/api';
-import { getWorker } from '@/lib/store';
+import { ApiError, getWorkerClaims } from '@/lib/api';
 import {
-  CheckCircle,
-  XCircle,
+  describeValidationChecks,
+  findEventForClaim,
+  formatCurrencyValue,
+  formatDateTime,
+  formatNumber,
+  getClaimStatusBadgeVariant,
+  getEventInfo,
+  getPayoutStatusBadgeVariant,
+} from '@/lib/backend-helpers';
+import { getEvent, getPolicy, getWorker } from '@/lib/store';
+import type { BackendClaim, BackendEvent, BackendPolicy, StoredWorker } from '@/lib/types';
+import {
   AlertTriangle,
-  Shield,
   ArrowRight,
+  CheckCircle,
   FileText,
-  Loader2,
-  Zap,
+  Shield,
+  XCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
-}
-
-function ClaimStatusBadge({ status }: { status: string }) {
-  const variant =
-    status === 'approved' || status === 'paid'
-      ? 'success'
-      : status === 'processing' || status === 'eligible'
-      ? 'warning'
-      : status === 'rejected'
-      ? 'danger'
-      : 'muted';
-  return <Badge variant={variant}>{status}</Badge>;
-}
-
 export default function ClaimPage() {
-  const [claims, setClaims] = useState<Record<string, unknown>[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [worker, setWorker] = useState<StoredWorker | null>(null);
+  const [policy, setPolicy] = useState<BackendPolicy | null>(null);
+  const [event, setEvent] = useState<BackendEvent | null>(null);
+  const [claims, setClaims] = useState<BackendClaim[]>([]);
+  const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const worker = getWorker();
-        if (!worker?.worker_id) {
-          setError('No registered worker found.');
-          setLoading(false);
-          return;
-        }
-
-        const result = await getWorkerClaims(worker.worker_id);
-        // Response may be array or { claims: [...] }
-        let list: Record<string, unknown>[] = [];
-        if (Array.isArray(result)) {
-          list = result as Record<string, unknown>[];
-        } else if ((result as Record<string, unknown[]>).claims) {
-          list = (result as Record<string, unknown[]>).claims as Record<string, unknown>[];
-        } else {
-          list = [result as Record<string, unknown>];
-        }
-
-        // Sort by created_at descending (newest first)
-        list.sort((a, b) => {
-          const aDate = String(a.created_at || a.timestamp || '');
-          const bDate = String(b.created_at || b.timestamp || '');
-          return bDate.localeCompare(aDate);
-        });
-
-        setClaims(list);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load claims');
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    setWorker(getWorker());
+    setPolicy(getPolicy());
+    setEvent(getEvent()?.event ?? null);
+    setIsReady(true);
   }, []);
 
-  if (loading) {
-    return (
-      <>
-        <Header />
-        <main className="flex-1 max-w-4xl mx-auto px-4 py-16 w-full flex flex-col items-center justify-center gap-4">
-          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          <p className="text-[14px] text-text-secondary">Loading your claims…</p>
-        </main>
-      </>
-    );
-  }
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+    const workerId = worker?.worker_id;
+    if (!workerId) {
+      setIsLoading(false);
+      return;
+    }
+    const stableWorkerId = workerId;
 
-  if (error) {
-    return (
-      <>
-        <Header />
-        <main className="flex-1 max-w-4xl mx-auto px-4 py-16 w-full flex flex-col items-center justify-center gap-4">
-          <AlertTriangle className="w-8 h-8 text-danger" />
-          <p className="text-[14px] text-danger">{error}</p>
-          <Link href="/onboarding">
-            <Button variant="outline">Complete Registration</Button>
-          </Link>
-        </main>
-      </>
-    );
-  }
+    let cancelled = false;
 
-  if (claims.length === 0) {
-    return (
-      <>
-        <Header />
-        <main className="flex-1 max-w-4xl mx-auto px-4 py-16 w-full flex flex-col items-center justify-center gap-4">
-          <FileText className="w-10 h-10 text-text-muted opacity-60" />
-          <p className="text-[16px] font-semibold text-text-primary">No claims yet</p>
-          <p className="text-[14px] text-text-secondary">
-            Simulate a disruption event to see automated claims generated.
-          </p>
-          <Link href="/simulate">
-            <Button>
-              <Zap className="w-4 h-4" />
-              Simulate a Disruption
-            </Button>
-          </Link>
-        </main>
-      </>
-    );
-  }
+    async function loadClaims() {
+      setIsLoading(true);
+      setError(null);
 
-  const latest = claims[0];
-  const older = claims.slice(1);
+      try {
+        const response = await getWorkerClaims(stableWorkerId);
+        if (cancelled) {
+          return;
+        }
+        setClaims(response);
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
+        if (requestError instanceof ApiError) {
+          setError(requestError.detail || requestError.message);
+        } else {
+          setError('Unable to load claim history right now.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
 
-  // Derive display fields from latest claim
-  const latestId = (latest.claim_id || latest.id || '—') as string;
-  const latestStatus = (latest.status || 'eligible') as string;
-  const latestEventType = (latest.event_type || '') as string;
-  const latestPayout = Number(latest.estimated_payout || latest.payout_amount || 0);
-  const latestZone = (latest.zone || '') as string;
-  const latestCity = (latest.city || '') as string;
-  const latestSeverity = (latest.severity || 'high') as string;
-  const latestDuration = Number(latest.duration_hours || 0);
-  const latestPolicyId = (latest.policy_id || '') as string;
-  const validationChecks = (latest.validation_checks as Array<{ check: string; passed: boolean; detail?: string }>) || [];
-  const allPassed = validationChecks.length > 0 ? validationChecks.every((c) => c.passed) : latestPayout > 0;
+    void loadClaims();
 
-  // Find matching disruption type info if available
-  const matchedDTKey = Object.keys(DISRUPTION_TYPE_INFO).find((k) => {
-    const mapped = latestEventType.replace(/_/g, '').toLowerCase();
-    return k.toLowerCase().replace(/_/g, '').includes(mapped) || mapped.includes(k.toLowerCase().replace(/_/g, ''));
-  });
-  const dtInfo = matchedDTKey ? DISRUPTION_TYPE_INFO[matchedDTKey as keyof typeof DISRUPTION_TYPE_INFO] : null;
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, worker]);
+
+  const latestClaim =
+    [...claims].sort(
+      (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+    )[0] ?? null;
+
+  const linkedEvent = findEventForClaim(event, latestClaim);
+  const eventInfo = latestClaim ? getEventInfo(latestClaim.event_type) : null;
+  const validationChecks = latestClaim ? describeValidationChecks(latestClaim.validation_checks, latestClaim) : [];
+  const allPassed = validationChecks.every((check) => check.passed) && latestClaim?.status === 'approved';
 
   return (
     <>
       <Header />
       <main className="flex-1 max-w-4xl mx-auto px-4 py-6 sm:py-10 w-full">
-        <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Claims</h1>
-          <p className="text-[14px] text-text-secondary mt-1">
-            {claims.length} claim{claims.length !== 1 ? 's' : ''} found — showing newest first
-          </p>
-        </div>
+        {isLoading ? (
+          <ClaimSkeleton />
+        ) : !worker ? (
+          <EmptyState
+            title="Register a Worker First"
+            description="Claim history depends on the worker profile stored during onboarding."
+            href="/onboarding"
+            cta="Go to Onboarding"
+          />
+        ) : !latestClaim ? (
+          <EmptyState
+            title="No Claims Yet"
+            description="Trigger a disruption simulation after activating a policy to create and review live claims here."
+            href="/simulate"
+            cta="Try Simulation"
+          />
+        ) : (
+          <>
+            <div className="mb-6">
+              <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Claim Preview</h1>
+              <p className="text-[14px] text-text-secondary mt-1">
+                Latest automated claim assessment for worker {worker.name}
+              </p>
+            </div>
 
-        {/* Latest Claim — Full Detail */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2 space-y-6">
-            {/* Event Details */}
-            <Card padding="lg">
-              <CardHeader
-                title="Latest Claim"
-                action={<ClaimStatusBadge status={latestStatus} />}
-              />
-              <div className="p-4 rounded-lg bg-background border border-border mb-4">
-                <p className="text-[14px] font-semibold text-text-primary">
-                  {dtInfo?.label || latestEventType || 'Disruption Event'}
-                </p>
-                {dtInfo?.description && (
-                  <p className="text-[13px] text-text-secondary mt-1">{dtInfo.description}</p>
-                )}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 text-[12px]">
-                  <div>
-                    <span className="text-text-muted">Zone</span>
-                    <p className="font-medium text-text-primary">{latestZone || '—'}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">City</span>
-                    <p className="font-medium text-text-primary">{latestCity || '—'}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Duration</span>
-                    <p className="font-medium text-text-primary">{latestDuration ? `${latestDuration}h` : '—'}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Severity</span>
-                    <p className="font-medium text-text-primary capitalize">{latestSeverity}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Linked Policy */}
-              {latestPolicyId && (
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                  <Shield className="w-4 h-4 text-primary flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-text-primary">{latestPolicyId}</p>
-                    <p className="text-[12px] text-text-secondary">Linked policy</p>
-                  </div>
-                  <Badge variant="success">Active</Badge>
-                </div>
-              )}
-            </Card>
-
-            {/* Validation Checks */}
-            {validationChecks.length > 0 && (
-              <Card padding="lg">
-                <CardHeader
-                  title="Validation Checks"
-                  subtitle="Automated verification pipeline"
-                  action={
-                    allPassed ? (
-                      <Badge variant="success">All Passed</Badge>
-                    ) : (
-                      <Badge variant="danger">Failed</Badge>
-                    )
-                  }
-                />
-                <div className="space-y-2">
-                  {validationChecks.map((check, i) => (
-                    <div
-                      key={i}
-                      className={`flex items-start gap-3 p-3 rounded-lg border ${
-                        check.passed ? 'border-border bg-surface' : 'border-danger/30 bg-danger-light'
-                      }`}
-                    >
-                      {check.passed ? (
-                        <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
-                      )}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <Card padding="lg">
+                  <CardHeader
+                    title="Triggering Event"
+                    action={<Badge variant={getClaimStatusBadgeVariant(latestClaim.status)}>{latestClaim.status}</Badge>}
+                  />
+                  <div className="p-4 rounded-lg bg-background border border-border mb-4">
+                    <p className="text-[14px] font-semibold text-text-primary">{eventInfo?.label ?? latestClaim.event_type}</p>
+                    <p className="text-[13px] text-text-secondary mt-1">
+                      Auto-generated from the live backend event trigger pipeline.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 text-[12px]">
                       <div>
-                        <p className="text-[13px] font-medium text-text-primary">{check.check}</p>
-                        {check.detail && (
-                          <p className="text-[12px] text-text-secondary">{check.detail}</p>
-                        )}
+                        <span className="text-text-muted">Zone</span>
+                        <p className="font-medium text-text-primary">{latestClaim.zone}</p>
+                      </div>
+                      <div>
+                        <span className="text-text-muted">Affected Hours</span>
+                        <p className="font-medium text-text-primary">{formatNumber(latestClaim.affected_hours, 1)}h</p>
+                      </div>
+                      <div>
+                        <span className="text-text-muted">Severity</span>
+                        <p className="font-medium text-text-primary capitalize">{latestClaim.severity}</p>
+                      </div>
+                      <div>
+                        <span className="text-text-muted">Detected</span>
+                        <p className="font-medium text-text-primary">
+                          {linkedEvent ? formatDateTime(linkedEvent.start_time) : formatDateTime(latestClaim.created_at)}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-4 px-3 py-2.5 rounded-lg bg-border-light flex items-start gap-2">
-                  <FileText className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
-                  <p className="text-[12px] text-text-secondary">
-                    Validation is performed by the rules engine. AI models assist with anomaly scoring
-                    and event classification but do not determine eligibility.
-                  </p>
-                </div>
-              </Card>
-            )}
-          </div>
+                  </div>
 
-          {/* Payout Sidebar */}
-          <div className="space-y-6">
-            <Card padding="lg" className={allPassed ? 'ring-1 ring-success' : ''}>
-              <CardHeader title="Payout Estimate" />
-              {allPassed && latestPayout > 0 ? (
-                <div className="text-center">
-                  <CheckCircle className="w-8 h-8 text-success mx-auto mb-2" />
-                  <p className="text-[28px] font-bold text-success">{formatCurrency(latestPayout)}</p>
-                  <p className="text-[12px] text-text-secondary mt-1">Estimated payout amount</p>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-2" />
-                  <p className="text-[14px] font-semibold text-warning">Pending Assessment</p>
-                  <p className="text-[13px] text-text-secondary mt-1">Claim is being processed.</p>
-                </div>
-              )}
-              <div className="mt-3 pt-3 border-t border-border text-center">
-                <ClaimStatusBadge status={latestStatus} />
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+                    <Shield className="w-4 h-4 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-text-primary">{latestClaim.policy_id}</p>
+                      <p className="text-[12px] text-text-secondary">
+                        {policy ? `${policy.coverage_tier} plan - ${policy.zone}, ${policy.city}` : 'Linked live policy snapshot'}
+                      </p>
+                    </div>
+                    <Badge variant="success">Active</Badge>
+                  </div>
+                </Card>
+
+                <Card padding="lg">
+                  <CardHeader
+                    title="Validation Checks"
+                    subtitle="Rules-engine verification pipeline"
+                    action={allPassed ? <Badge variant="success">All Passed</Badge> : <Badge variant="danger">Review</Badge>}
+                  />
+                  <div className="space-y-2">
+                    {validationChecks.map((check) => (
+                      <div
+                        key={check.id}
+                        className={`flex items-start gap-3 p-3 rounded-lg border ${
+                          check.passed ? 'border-border bg-surface' : 'border-danger/30 bg-danger-light'
+                        }`}
+                      >
+                        {check.passed ? (
+                          <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <p className="text-[13px] font-medium text-text-primary">{check.label}</p>
+                          <p className="text-[12px] text-text-secondary">{check.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 px-3 py-2.5 rounded-lg bg-border-light flex items-start gap-2">
+                    <FileText className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
+                    <p className="text-[12px] text-text-secondary">
+                      Claim approval is deterministic. The backend stores these validation flags directly on every created claim.
+                    </p>
+                  </div>
+                </Card>
+
+                <Card padding="lg">
+                  <CardHeader
+                    title="Fraud & Integrity Signals"
+                    subtitle="Anomaly checks applied before payout processing"
+                    action={
+                      <Badge
+                        variant={
+                          latestClaim.anomaly_band === 'HIGH'
+                            ? 'danger'
+                            : latestClaim.anomaly_band === 'MEDIUM'
+                            ? 'warning'
+                            : 'success'
+                        }
+                      >
+                        {latestClaim.anomaly_band}
+                      </Badge>
+                    }
+                  />
+                  <div className="grid grid-cols-2 gap-3 mb-4 text-[12px]">
+                    <div className="p-3 rounded-lg bg-background border border-border">
+                      <p className="text-text-muted">Anomaly Score</p>
+                      <p className="font-semibold text-text-primary mt-1">{latestClaim.anomaly_score}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-background border border-border">
+                      <p className="text-text-muted">Payout Status</p>
+                      <div className="mt-1">
+                        <Badge variant={getPayoutStatusBadgeVariant(latestClaim.payout_status)}>
+                          {latestClaim.payout_status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {latestClaim.anomaly_reasons.map((reason) => (
+                      <div key={reason} className="px-3 py-2 rounded-lg border border-border bg-background">
+                        <p className="text-[12px] text-text-primary capitalize">{reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
               </div>
-            </Card>
 
-            <Link href="/dashboard">
-              <Button variant="outline" fullWidth>
-                Go to Dashboard
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
+              <div className="space-y-6">
+                <Card padding="lg" className={allPassed ? 'ring-1 ring-success' : ''}>
+                  <CardHeader title="Payout Estimate" />
+                  {allPassed ? (
+                    <>
+                      <div className="text-center mb-4">
+                        <CheckCircle className="w-8 h-8 text-success mx-auto mb-2" />
+                        <p className="text-[28px] font-bold text-success">{formatCurrencyValue(latestClaim.payout_amount)}</p>
+                        <p className="text-[12px] text-text-secondary mt-1">Estimated payout amount</p>
+                      </div>
+                      <div className="bg-background border border-border rounded-lg p-3 mb-4 font-mono text-[11px] text-text-secondary leading-relaxed">
+                        <p className="text-text-muted text-[10px] mb-1">{'// Payout formula'}</p>
+                        <p>min(</p>
+                        <p className="pl-2">
+                          {formatCurrencyValue(latestClaim.protected_hourly_income)} x {formatNumber(latestClaim.affected_hours, 1)}h x{' '}
+                          {latestClaim.severity_multiplier},
+                        </p>
+                        <p className="pl-2">policy cap</p>
+                        <p>)</p>
+                      </div>
+                      <div className="space-y-2 text-[13px]">
+                        <Row label="Protected Hourly Income" value={`${formatCurrencyValue(latestClaim.protected_hourly_income)}/hr`} />
+                        <Row label="Shift Overlap" value={`${formatNumber(latestClaim.affected_hours, 1)} hours`} />
+                        <Row label="Severity Multiplier" value={`${latestClaim.severity_multiplier}x`} />
+                        <Row label="Claim Status" value={latestClaim.status} />
+                        <Row label="Payout Status" value={latestClaim.payout_status} />
+                        <Row label="Payout Reference" value={latestClaim.payout_reference || 'Pending'} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <AlertTriangle className="w-8 h-8 text-danger mx-auto mb-2" />
+                      <p className="text-[14px] font-semibold text-danger">Claim Needs Review</p>
+                      <p className="text-[13px] text-text-secondary mt-1">
+                        One or more validation checks failed. Review the checks for details.
+                      </p>
+                    </div>
+                  )}
+                </Card>
 
-        {/* Older Claims History */}
-        {older.length > 0 && (
-          <Card padding="lg">
-            <CardHeader title="Previous Claims" subtitle="Older claims sorted by date" />
-            <div className="overflow-x-auto -mx-4 sm:-mx-5 px-4 sm:px-5">
-              <table className="w-full text-[13px]">
-                <thead>
-                  <tr className="text-left text-text-muted text-[11px] uppercase tracking-wider">
-                    <th className="pb-2 pr-3 font-medium">Claim ID</th>
-                    <th className="pb-2 pr-3 font-medium">Event Type</th>
-                    <th className="pb-2 pr-3 font-medium">Zone</th>
-                    <th className="pb-2 pr-3 font-medium">Payout</th>
-                    <th className="pb-2 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {older.map((claim, i) => (
-                    <tr key={i}>
-                      <td className="py-3 pr-3 text-text-secondary truncate max-w-[120px]">
-                        {(claim.claim_id || claim.id || `#${i + 2}`) as string}
-                      </td>
-                      <td className="py-3 pr-3 font-medium text-text-primary capitalize">
-                        {String(claim.event_type || '').replace(/_/g, ' ')}
-                      </td>
-                      <td className="py-3 pr-3 text-text-secondary">{(claim.zone || '—') as string}</td>
-                      <td className="py-3 pr-3 font-medium text-text-primary">
-                        {Number(claim.estimated_payout || claim.payout_amount || 0) > 0
-                          ? formatCurrency(Number(claim.estimated_payout || claim.payout_amount))
-                          : '—'}
-                      </td>
-                      <td className="py-3">
-                        <ClaimStatusBadge status={(claim.status || 'processing') as string} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                <Card padding="md">
+                  <CardHeader title="Claim Status" />
+                  <div className="space-y-3">
+                    <StatusStep label="Event Detected" status="complete" />
+                    <StatusStep label="Validation Checks" status="complete" />
+                    <StatusStep label="Claim Created" status="complete" />
+                    <StatusStep label="Approval" status={latestClaim.status === 'approved' ? 'complete' : 'active'} />
+                    <StatusStep label="Payout Ready" status={latestClaim.status === 'approved' ? 'active' : 'pending'} />
+                  </div>
+                </Card>
+
+                {error && (
+                  <Card padding="md" className="border-danger/30 bg-danger-light">
+                    <p className="text-[13px] text-danger">{error}</p>
+                  </Card>
+                )}
+
+                <Link href="/dashboard">
+                  <Button variant="outline" fullWidth>
+                    Go to Dashboard
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
             </div>
-          </Card>
+          </>
         )}
       </main>
     </>
+  );
+}
+
+function EmptyState({
+  title,
+  description,
+  href,
+  cta,
+}: {
+  title: string;
+  description: string;
+  href: string;
+  cta: string;
+}) {
+  return (
+    <Card padding="lg">
+      <h1 className="text-xl font-bold text-text-primary">{title}</h1>
+      <p className="text-[14px] text-text-secondary mt-1">{description}</p>
+      <div className="mt-4">
+        <Link href={href}>
+          <Button>
+            {cta}
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </Link>
+      </div>
+    </Card>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-text-secondary">{label}</span>
+      <span className="font-medium text-text-primary">{value}</span>
+    </div>
+  );
+}
+
+function StatusStep({ label, status }: { label: string; status: 'complete' | 'active' | 'pending' }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+          status === 'complete'
+            ? 'bg-success text-white'
+            : status === 'active'
+            ? 'bg-primary text-white'
+            : 'bg-border-light text-text-muted'
+        }`}
+      >
+        {status === 'complete' ? (
+          <CheckCircle className="w-3.5 h-3.5" />
+        ) : (
+          <div className={`w-2 h-2 rounded-full ${status === 'active' ? 'bg-white' : 'bg-text-muted'}`} />
+        )}
+      </div>
+      <span className={status === 'pending' ? 'text-[13px] text-text-muted' : 'text-[13px] font-medium text-text-primary'}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function ClaimSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-8 w-40 bg-border-light rounded" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card padding="lg">
+            <div className="h-5 w-44 bg-border-light rounded" />
+            <div className="h-28 bg-border-light rounded-lg mt-4" />
+          </Card>
+          <Card padding="lg">
+            <div className="h-5 w-40 bg-border-light rounded" />
+            <div className="space-y-2 mt-4">
+              <div className="h-16 bg-border-light rounded-lg" />
+              <div className="h-16 bg-border-light rounded-lg" />
+              <div className="h-16 bg-border-light rounded-lg" />
+            </div>
+          </Card>
+        </div>
+        <div className="space-y-6">
+          <Card padding="lg">
+            <div className="h-5 w-32 bg-border-light rounded" />
+            <div className="h-24 bg-border-light rounded-lg mt-4" />
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 }

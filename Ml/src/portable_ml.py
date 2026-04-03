@@ -261,6 +261,41 @@ def fetch_all_history(start_date: str = DEFAULT_HISTORY_START, end_date: str | N
     return combined_rows
 
 
+def load_local_city_history(city: str, start_date: str, end_date: str) -> tuple[list[dict[str, Any]], date]:
+    if not PROCESSED_CITY_HOURLY_PATH.exists():
+        raise FileNotFoundError(f"Processed hourly history not found at {PROCESSED_CITY_HOURLY_PATH}.")
+
+    requested_start = date.fromisoformat(start_date)
+    requested_end = date.fromisoformat(end_date)
+    local_rows = [row for row in read_csv_rows(PROCESSED_CITY_HOURLY_PATH) if row["city"] == city]
+    if not local_rows:
+        raise ValueError(f"No processed local history available for city '{city}'.")
+
+    available_end = max(datetime.fromisoformat(row["timestamp"]).date() for row in local_rows)
+    actual_end = min(requested_end, available_end)
+    actual_start = min(requested_start, actual_end - timedelta(days=34))
+
+    filtered_rows = []
+    for row in local_rows:
+        row_date = datetime.fromisoformat(row["timestamp"]).date()
+        if actual_start <= row_date <= actual_end:
+            filtered_rows.append(row)
+
+    if not filtered_rows:
+        raise ValueError(
+            f"Processed local history for city '{city}' does not cover the requested window "
+            f"{start_date} to {end_date}."
+        )
+    return filtered_rows, actual_end
+
+
+def fetch_or_load_city_history(city: str, start_date: str, end_date: str) -> tuple[list[dict[str, Any]], date]:
+    try:
+        return fetch_city_history(city, start_date, end_date), date.fromisoformat(end_date)
+    except Exception:
+        return load_local_city_history(city, start_date, end_date)
+
+
 def parse_hourly_rows(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     by_city: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for raw_row in rows:
@@ -884,12 +919,12 @@ def evaluate_saved_model(
 def build_recent_feature_row(city: str, zone: str, shift_type: str, reference_date: date) -> dict[str, Any]:
     history_end = date.fromisoformat(default_history_end(reference_date))
     history_start = history_end - timedelta(days=34)
-    recent_rows = fetch_city_history(city, history_start.isoformat(), history_end.isoformat())
+    recent_rows, actual_history_end = fetch_or_load_city_history(city, history_start.isoformat(), history_end.isoformat())
     by_city = parse_hourly_rows(recent_rows)
     base_rows = build_base_hourly_rows(by_city)
     city_weekly = aggregate_city_weekly(base_rows)
     zone_shift_weekly = aggregate_zone_shift_weekly(base_rows)
-    week_start = week_start_from_service_date(history_end)
+    week_start = week_start_from_service_date(actual_history_end)
 
     current_key = (city, zone, shift_type, week_start)
     current_zone = zone_shift_weekly.get(current_key)
