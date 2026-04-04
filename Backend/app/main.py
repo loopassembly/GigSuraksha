@@ -74,11 +74,12 @@ def create_app(database: Any | None = None) -> FastAPI:
     if database is not None:
         app.state.database = database
 
+    _wildcard = settings.cors_origins == ["*"]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_credentials=not _wildcard,  # credentials=True is incompatible with origin=*
+        allow_methods=["*"],
         allow_headers=["*"],
     )
 
