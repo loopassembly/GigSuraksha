@@ -22,6 +22,14 @@
   <img alt="Razorpay" src="https://img.shields.io/badge/Razorpay-Weekly_Premium_Payments-0C2451?style=for-the-badge&logo=razorpay&logoColor=white">
 </p>
 
+## Pitch Deck
+- Pitch Deck Link: [https://canva.link/0xizo8okzt445dt](https://canva.link/0xizo8okzt445dt)
+
+## Demo Video
+[![Watch the video](https://img.youtube.com/vi/9FJZ7M_5NVo/0.jpg)](https://www.youtube.com/watch?v=9FJZ7M_5NVo)
+
+
+
 ## Judge TL;DR
 
 - **Problem:** gig workers lose income when external disruptions stop deliveries.
