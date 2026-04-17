@@ -1,337 +1,292 @@
 # GigSuraksha
 
-AI-enabled parametric income protection for India's quick-commerce delivery partners.
+<p align="center">
+  <img src="gig_suraksha_app/assets/logo.png" alt="GigSuraksha logo" width="120" />
+</p>
 
-GigSuraksha is built for riders working on Blinkit, Zepto, Instamart, and similar platforms whose earnings are vulnerable to measurable external disruptions such as heavy rainfall, waterlogging, severe AQI, extreme heat, platform outages, dark store downtime, and zone access restrictions.
+<p align="center">
+  <strong>AI-powered weekly income protection for India's quick-commerce delivery workforce.</strong>
+</p>
 
-This project is intentionally narrow and practical:
+<p align="center">
+  GigSuraksha protects delivery partners against measurable external disruptions like heavy rain,
+  waterlogging, severe AQI, extreme heat, platform outages, dark-store downtime, and access restrictions.
+</p>
 
-- coverage scope: **loss of income only**
-- pricing model: **weekly**
-- claim model: **parametric and automated**
-- ML role: **risk forecasting and premium loading inputs**
-- claim decisions: **deterministic and rule-based**
+<p align="center">
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-Android_App-02569B?style=for-the-badge&logo=flutter&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Claim_Engine-009688?style=for-the-badge&logo=fastapi&logoColor=white">
+  <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white">
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-Admin_Console-111111?style=for-the-badge&logo=nextdotjs&logoColor=white">
+  <img alt="Firebase" src="https://img.shields.io/badge/Firebase-Analytics_%26_Config-FFCA28?style=for-the-badge&logo=firebase&logoColor=black">
+  <img alt="Razorpay" src="https://img.shields.io/badge/Razorpay-Weekly_Premium_Payments-0C2451?style=for-the-badge&logo=razorpay&logoColor=white">
+</p>
 
-## Problem We Are Solving
+## Judge TL;DR
 
-Quick-commerce riders earn in narrow, high-value time windows inside hyperlocal zones. A 2-3 hour disruption during evening rush can wipe out a meaningful share of their weekly earnings. Today, most riders absorb that loss personally.
+- **Problem:** gig workers lose income when external disruptions stop deliveries.
+- **Coverage:** income loss only, not health, life, accidents, or vehicle repairs.
+- **Model:** weekly pricing, zone-specific cover, shift-specific protection.
+- **Experience:** Android Flutter app for workers, web dashboard for admins.
+- **Intelligence:** AI-assisted pricing and portfolio forecasts with rule-based claims.
+- **Trust layer:** 3-angle selfie KYC, GPS validation, scene evidence, anomaly detection.
+- **Outcome:** fast quote, automated trigger evaluation, explainable claim decision, instant payout simulation.
 
-We built GigSuraksha as a weekly safety net for those lost earning hours.
+## Why GigSuraksha Exists
 
-## Our Persona
+India's delivery partners operate on narrow weekly cash cycles. If a flood, heatwave, severe AQI spike,
+platform outage, or dark-store shutdown hits during their most valuable shift, they lose income immediately.
+Traditional insurance is simply not designed for this kind of short-duration, hyperlocal, recurring livelihood risk.
 
-- urban quick-commerce delivery riders
-- city + zone-based work patterns
-- shift-based earning behavior
-- weekly cash flow and weekly expenses
-- high exposure to short-duration external disruptions
+GigSuraksha turns that problem into a product that is:
 
-This is why our product is zone-specific, shift-specific, and weekly by design.
+- **weekly**, because gig workers budget week-to-week
+- **parametric**, because disruption triggers can be measured
+- **explainable**, because insurance trust matters
+- **fraud-aware**, because payout confidence matters just as much as speed
 
-## What Makes GigSuraksha Different
+## What We Built
 
-- We do **not** build generic “gig worker insurance.”
-- We do **not** cover health, life, accidents, or vehicle repairs.
-- We insure **pre-declared earning windows** in **pre-declared operating zones**.
-- ML helps estimate weekly disruption risk, but **final pricing and claims stay explainable**.
-- The worker simulation flow is **policy-bound**, so workers cannot freely claim arbitrary zones.
+| Surface | What It Does | Why It Matters |
+| --- | --- | --- |
+| **Flutter worker app** | onboarding, KYC, quote, policy activation, GPS, evidence capture, claims, profile | gives workers a fast mobile-first protection experience |
+| **FastAPI backend** | worker registry, quote engine, policy creation, event simulation, claim automation, payout simulation | powers the insurance workflow end-to-end |
+| **ML risk module** | weekly disruption risk prediction, risk bands, premium loading hints, admin forecasts | keeps pricing dynamic but still understandable |
+| **Next.js admin console** | portfolio metrics, disruption mix, claims trends, trigger automation, forecast visibility | gives insurers and judges a complete operational view |
 
-## End-to-End Product Flow
+## Phase 3 Highlights
 
-1. Worker registers with city, platform, operating zone, insured shift, weekly earnings, and weekly active hours.
-2. The platform runs the weekly disruption risk model and returns:
-   - expected disrupted hours next week
-   - risk score
-   - risk band
-   - ML premium loading
-3. The backend computes the final weekly premium using a deterministic formula.
-4. The worker activates a weekly policy.
-5. Verified disruptions are ingested manually or through the automated trigger monitor.
-6. The backend checks:
-   - active policy
-   - zone match
-   - shift overlap
-   - verified event
-   - duplicate prevention
-   - location/activity integrity signals
-7. If eligible, a claim is auto-created and a simulated payout is processed.
-8. Worker and admin dashboards show live policy, event, claim, payout, and forecast data.
+### Worker Trust and Verification
 
-## Phase 2 Deliverables Implemented
+- 3-angle selfie KYC during registration
+- worker profile trust surface with selfie history
+- UPI-linked payout setup
+- GPS-backed live location confidence
 
-### 1. Registration Process
+### Claim Automation
 
-- worker onboarding flow in the frontend
-- backend worker registration and retrieval
-- MongoDB-backed worker persistence
+- event-driven claim triggering
+- zone and shift overlap checks
+- duplicate claim prevention
+- anomaly scoring before payout
+- simulated instant payout processing
 
-### 2. Insurance Policy Management
+### Evidence-Aware UX
 
-- quote generation from registered worker context
-- policy creation using `worker_id`
-- weekly policy snapshot with:
-  - validity window
-  - insured shift
-  - coverage tier
-  - premium breakdown
-  - coverage summary
-- policy retrieval for worker and individual policy views
+- on-site disruption proof capture
+- safety override flow for unreachable or unsafe zones
+- worker notes and image attachment
+- evidence packets linked back to claims for review
 
-### 3. Dynamic Premium Calculation
+### Admin Intelligence
 
-- ML-backed weekly disruption prediction
-- risk score, risk band, and premium loading
-- deterministic premium formula:
+- live worker, policy, event, claim, and payout counts
+- disruption mix by event type
+- automated trigger monitor run
+- next-week forecast cards for premium readiness
 
-```text
-Final Weekly Premium =
-  Base Premium
-+ Zone Risk Loading
-+ Shift Exposure Loading
-+ Coverage Factor
-+ ML Risk Loading
-- Safe Zone Discount
+## Product Journey
+
+| Step | Worker View | System Action |
+| --- | --- | --- |
+| `1` | Registration | captures city, platform, zone, shift, weekly income, UPI |
+| `2` | KYC | stores 3-angle selfie verification for trust scoring |
+| `3` | Quote | ML predicts disruption exposure and risk band |
+| `4` | Policy activation | backend creates weekly cover snapshot and premium |
+| `5` | GPS + monitoring | app records location confidence for claim context |
+| `6` | Disruption claim | worker submits evidence or uses safety override |
+| `7` | Validation | backend checks policy, zone, shift, event, duplicates, anomalies |
+| `8` | Payout | eligible claim is auto-created and payout is simulated instantly |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A["Flutter Worker App"] --> B["FastAPI Backend"]
+    H["Next.js Admin Web"] --> B
+
+    A --> I["Firebase Analytics"]
+    A --> J["Razorpay"]
+    A --> K["Google Maps / GPS"]
+
+    B --> C["Worker Service"]
+    B --> D["Quote & Policy Service"]
+    B --> E["Event & Claim Service"]
+    B --> F["Fraud & Integrity Service"]
+    B --> G["Trigger Monitor"]
+
+    D --> M["ML Risk Engine"]
+    G --> N["Weather / AQI / Mock Trigger Sources"]
+
+    C --> O["MongoDB Atlas"]
+    D --> O
+    E --> O
+    F --> O
+    G --> O
+
+    E --> P["Payout Simulator"]
+    H --> Q["Portfolio Metrics & Forecasts"]
 ```
 
-Current mappings:
+## Claim Automation Flow
 
-- Base Premium = `29`
-- ML Loading = `LOW: 3`, `MEDIUM: 8`, `HIGH: 12`
-- Coverage Factor = `basic: 4`, `standard: 7`, `comprehensive: 10`
-- Shift Loading = `morning_rush: 3`, `afternoon: 2`, `evening_rush: 5`, `late_night: 4`
+```mermaid
+sequenceDiagram
+    participant W as Worker App
+    participant API as FastAPI
+    participant ML as Risk Engine
+    participant DB as MongoDB
+    participant T as Trigger / Validation Layer
 
-### 4. Claims Management
+    W->>API: Register worker + KYC + payout setup
+    API->>DB: Create worker profile
+    W->>API: Generate weekly quote
+    API->>ML: Predict disruption risk
+    ML-->>API: risk_score + risk_band + premium_loading
+    API-->>W: Explainable weekly premium
 
-- verified event simulation
-- automatic claim creation from active policies
-- claim retrieval by worker and claim ID
-- payout estimate plus simulated payout processing
-- worker claim history and claim validation view
+    W->>API: Activate policy
+    API->>DB: Store weekly policy snapshot
 
-## AI / ML System
+    W->>API: Submit disruption event + evidence
+    API->>T: Check zone, shift, duplicate, evidence, anomaly signals
+    T->>DB: Find matching active policy
+    T-->>API: Eligibility result
+    API->>DB: Create claim + payout record
+    API-->>W: Claim approved and payout simulated
+```
 
-The ML model predicts:
+## Why This Design Works
 
-- `expected_disrupted_hours_next_week`
+### AI Where It Helps
 
-for each:
+We use AI for:
 
-- city
-- zone
-- shift type
-- week context
+- weekly disruption risk prediction
+- risk scoring and banding
+- premium loading guidance
+- portfolio forecasting for admin visibility
 
-It produces:
+### Rules Where Trust Matters
 
-- `risk_score`
-- `risk_band`
-- `premium_loading`
+We keep these parts deterministic and explainable:
 
-### Data Inputs
+- final weekly premium calculation
+- policy validity window
+- zone and shift eligibility
+- claim acceptance logic
+- duplicate prevention
+- payout amount calculation
 
-- Open-Meteo historical weather
-- Open-Meteo air quality
-- manually curated zone priors for demo zones
-
-### Feature Themes
-
-- rainfall intensity and persistence
-- heat stress exposure
-- severe pollution exposure
-- weather volatility
-- recent disruption hours
-- zone flood proneness
-- AQI sensitivity
-- zone access risk
-- shift exposure
-
-### Important Modeling Principle
-
-ML does **not** directly decide the premium or approve the claim.
-
-It only provides risk inputs to an otherwise deterministic pricing and operations system.
-
-## Parametric Triggers Implemented
-
-Supported live/simulated triggers:
-
-- heavy rainfall
-- waterlogging
-- heat stress
-- severe AQI
-- platform outage
-- dark store unavailable
-- zone access restriction
-
-## Fraud Detection and Integrity Controls
-
-Phase 2 includes explainable fraud and integrity checks:
-
-- duplicate claim prevention
-- policy active check
-- zone match check
-- shift overlap check
-- verified event check
-- location match check from event metadata
-- activity validation from event metadata
-- anomaly scoring band:
-  - `LOW`
-  - `MEDIUM`
-  - `HIGH`
-
-We also added simulated payout blocking for highly anomalous claims.
-
-## Automated Trigger Monitoring
-
-The backend now includes an automated trigger monitor that scans active policies against mocked integration sources:
-
-- weather mock
-- traffic mock
-- platform mock
-
-This supports:
-
-- candidate event generation
-- event deduplication
-- automatic event creation
-- automatic claim creation from matching policies
-
-## Worker Experience
-
-Frontend flow implemented:
-
-- landing page
-- onboarding
-- live quote page
-- policy summary page
-- worker-bound simulation page
-- claim page
-- worker dashboard
-- admin dashboard
-
-Important UX choice:
-
-- the simulation page is now **bound to the active worker policy**
-- the worker cannot manually choose arbitrary zone and shift combinations to simulate self-claims
-
-## Admin Experience
-
-The admin dashboard shows:
-
-- total workers
-- total active policies
-- total events
-- total claims
-- claims by status
-- claims by disruption type
-- recent events
-- recent claims
-- next-week disruption forecast cards
-- latest automated trigger monitor run
-
-## Deployment Status
-
-### Backend
-
-Deployed on Fly.io:
-
-- [https://gigsuraksha-backend.fly.dev](https://gigsuraksha-backend.fly.dev)
-
-The deployed backend includes:
-
-- FastAPI API layer
-- integrated ML quote/risk engine
-- MongoDB persistence
-- automated trigger monitor
-- claim automation
-- simulated payout processing
-
-### Frontend
-
-- integrated with the deployed backend
-- verified with `lint` and production build
-- ready to be hosted separately if needed
+This gives us the best of both worlds: adaptive pricing with insurer-grade clarity.
 
 ## Repository Structure
 
 ```text
 GigSuraksha/
 ├── Backend/
+│   ├── app/
+│   │   ├── repositories/
+│   │   ├── services/
+│   │   └── utils/
+│   ├── samples/
+│   └── tests/
 ├── Ml/
+│   ├── data/
+│   ├── models/
+│   ├── reports/
+│   └── src/
 ├── frontend/
-├── videos/
+│   ├── src/app/
+│   ├── src/components/
+│   └── src/lib/
+├── gig_suraksha_app/
+│   ├── android/
+│   ├── assets/
+│   ├── ios/
+│   └── lib/
 └── README.md
 ```
 
-Detailed module docs:
+### Folder Guide
 
-- [`Backend/README.md`](/Users/loopassembly/Desktop/GigSuraksha/Backend/README.md)
-- [`Ml/README.md`](/Users/loopassembly/Desktop/GigSuraksha/Ml/README.md)
-- [`frontend/README.md`](/Users/loopassembly/Desktop/GigSuraksha/frontend/README.md)
+| Path | Purpose |
+| --- | --- |
+| `gig_suraksha_app/` | Android-first Flutter app for workers |
+| `frontend/` | web experience and insurer/admin dashboard |
+| `Backend/` | FastAPI APIs, claim engine, trigger monitor, payout simulation |
+| `Ml/` | training, evaluation, inference, and reporting for weekly disruption risk |
+
+## Demo Scenarios Covered
+
+- heavy rainfall
+- waterlogging
+- severe AQI
+- extreme heat
+- platform outage
+- dark-store downtime
+- zone restriction
 
 ## Tech Stack
 
-### Frontend
+| Layer | Stack |
+| --- | --- |
+| Mobile app | Flutter, Dart, Provider, Firebase Analytics, Razorpay, Google Maps, Geolocator |
+| Backend | FastAPI, Python, Pydantic, Motor, MongoDB Atlas |
+| Admin web | Next.js, React, TypeScript, Tailwind CSS, Recharts |
+| ML | Pandas, NumPy, scikit-learn, XGBoost, Joblib |
+| Infra | Fly.io, Firebase, MongoDB Atlas |
 
-- Next.js
-- React
-- TypeScript
-- Tailwind-style utility classes
+## Local Development
 
 ### Backend
 
-- FastAPI
-- Pydantic
-- MongoDB Atlas
-- Fly.io
-
-### ML
-
-- Python
-- Open-Meteo APIs
-- interpretable tabular risk modeling
-- portable pure-Python model artifact for current environment compatibility
-
-## Testing and Verification
-
-Backend:
-
 ```bash
-PYTHONPATH=Backend python3.10 -m unittest discover -s Backend/tests -p 'test_*.py'
+cd Backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
-Frontend:
+### Mobile App
+
+```bash
+cd gig_suraksha_app
+flutter pub get
+flutter run
+```
+
+### Web Admin
 
 ```bash
 cd frontend
-npm run lint
-npx next build --webpack
+npm install
+npm run dev
 ```
 
-## What We Learned
+### ML Module
 
-- the strongest insurance ideas are the most measurable ones
-- weekly pricing fits the earning rhythm of quick-commerce riders better than monthly products
-- product design itself is a fraud-defense layer
-- AI works best in insurance when it supports operational judgment rather than replacing explainable rules
+```bash
+cd Ml
+python3 -m src.pipeline --start-date 2023-01-01 --end-date 2026-03-29
+```
 
-## Challenges We Faced
+## Live Links
 
-- narrowing the scope to income loss only and resisting feature bloat
-- designing claims around measurable triggers instead of vague income drops
-- separating ML-assisted forecasting from money-moving claim logic
-- keeping the product honest and explainable while still feeling automated and intelligent
+- Worker/Admin web: [gigsuraksha-beta.web.app](https://gigsuraksha-beta.web.app/)
+- Backend API: [gigsuraksha-backend.fly.dev](https://gigsuraksha-backend.fly.dev)
+- Demo video: [YouTube walkthrough](https://youtu.be/AqH0dfiZbP4)
 
-## Phase 2 Outcome
+## What Judges Should Remember
 
-GigSuraksha now demonstrates the complete Phase 2 MVP loop:
+GigSuraksha is not a generic insurance concept. It is a complete, end-to-end livelihood protection platform
+for delivery workers, built around the actual realities of the gig economy:
 
-1. register a worker
-2. generate a weekly ML-backed quote
-3. activate a weekly policy
-4. create or monitor disruption events
-5. auto-create claims from matching policies
-6. simulate payout processing
-7. inspect worker and admin dashboards
+- weekly income cycles
+- hyperlocal operating zones
+- short-duration but high-impact disruptions
+- trust-sensitive claim flows
+- fraud-aware, explainable automation
 
-This gives us a working, explainable, hackathon-ready parametric income protection platform for India’s quick-commerce workforce.
+We are not insuring vehicles. We are not insuring health. We are insuring **earning continuity**.

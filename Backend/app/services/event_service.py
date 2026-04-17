@@ -18,7 +18,7 @@ from app.services.fraud_service import build_claim_integrity_summary
 from app.services.payout_service import build_simulated_payout
 from app.utils.ids import generate_readable_id
 from app.utils.shifts import compute_shift_overlap_hours
-from app.utils.time import intervals_overlap, utcnow
+from app.utils.time import intervals_overlap, normalize_utc_datetime, utcnow
 
 
 def serialize_event(document: dict[str, Any]) -> dict[str, Any]:
@@ -49,7 +49,7 @@ async def _create_event_and_claims(database: Any, payload: dict[str, Any]) -> di
     city, zone_profile = validate_city_zone(payload["city"], payload["zone"])
     event_type = normalize_event_type(payload["event_type"])
     severity = normalize_severity(payload["severity"])
-    start_time = payload["start_time"]
+    start_time = normalize_utc_datetime(payload["start_time"])
     duration_hours = float(payload["duration_hours"])
     if duration_hours <= 0:
         raise ValueError("duration_hours must be greater than 0.")

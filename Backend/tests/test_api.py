@@ -141,6 +141,52 @@ class GigSurakshaApiTests(unittest.TestCase):
         self.assertEqual(admin_body["claims_by_status"]["approved"], 1)
         self.assertGreaterEqual(len(admin_body["forecast_cards"]), 1)
 
+    def test_event_simulation_accepts_timezone_aware_timestamp(self) -> None:
+        worker_response = self.client.post(
+            "/api/workers/register",
+            json={
+                "name": "Neha Das",
+                "phone": "9999988888",
+                "city": "Bengaluru",
+                "platform": "Blinkit",
+                "zone": "Koramangala",
+                "shift_type": "evening_rush",
+                "weekly_earnings": 6500,
+                "weekly_active_hours": 42,
+                "upi_id": "neha@oksbi",
+            },
+        )
+        self.assertEqual(worker_response.status_code, 200)
+        worker_id = worker_response.json()["worker_id"]
+
+        policy_response = self.client.post(
+            "/api/policies/create",
+            json={
+                "worker_id": worker_id,
+                "coverage_tier": "standard",
+                "feature_context": {"reference_date": "2026-04-17"},
+                "valid_from": "2026-04-14T00:00:00",
+            },
+        )
+        self.assertEqual(policy_response.status_code, 200)
+
+        event_response = self.client.post(
+            "/api/events/simulate",
+            json={
+                "event_type": "heavy_rainfall",
+                "city": "Bengaluru",
+                "zone": "Koramangala",
+                "severity": "high",
+                "start_time": "2026-04-17T18:00:00Z",
+                "duration_hours": 2,
+                "source": "simulation",
+                "verified": True,
+                "metadata": {"trigger": "timezone_regression"},
+            },
+        )
+        self.assertEqual(event_response.status_code, 200)
+        self.assertGreaterEqual(event_response.json()["claims_created"], 1)
+
     def test_heat_stress_and_trigger_monitor_flow(self) -> None:
         worker_response = self.client.post(
             "/api/workers/register",

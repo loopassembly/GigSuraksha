@@ -6,6 +6,7 @@ from typing import Any
 from app.config import ANOMALY_BAND_THRESHOLDS
 from app.repositories.claims import ClaimRepository
 from app.repositories.workers import WorkerRepository
+from app.utils.time import normalize_utc_datetime
 
 
 def anomaly_band_for_score(score: float) -> str:
@@ -30,14 +31,17 @@ async def build_claim_integrity_summary(
 
     same_upi_workers = await worker_repository.list_by_upi_id(worker["upi_id"])
     recent_claims = await claims_repository.list_all(limit=50)
-    event_start = event["start_time"]
+    event_start = normalize_utc_datetime(event["start_time"])
     zone_window_start = event_start - timedelta(minutes=45)
     zone_burst_claims = [
         claim
         for claim in recent_claims
+        if claim.get("created_at") is not None
         if claim["city"] == policy["city"]
         and claim["zone"] == policy["zone"]
-        and zone_window_start <= claim["created_at"] <= event_start + timedelta(minutes=45)
+        and zone_window_start
+        <= normalize_utc_datetime(claim["created_at"])
+        <= event_start + timedelta(minutes=45)
     ]
 
     anomaly_score = 0.0
@@ -73,7 +77,7 @@ async def build_claim_integrity_summary(
     if payout_estimate >= float(policy["coverage_summary"]["max_weekly_payout"]) * 0.9:
         anomaly_score += 0.06
         anomaly_reasons.append("claim near weekly payout cap")
-    if worker["created_at"] >= event_start - timedelta(hours=12):
+    if normalize_utc_datetime(worker["created_at"]) >= event_start - timedelta(hours=12):
         anomaly_score += 0.08
         anomaly_reasons.append("very recent worker registration")
 

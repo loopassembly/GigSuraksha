@@ -25,6 +25,23 @@ frontend/out/
 # misc
 .DS_Store
 *.pem
+*.py[cod]
+__pycache__/
+.python-version
+.vscode/
+.agent/
+.codex/
+.claude/
+.next/
+AGENTS.md
+.graphify_ast.json
+.graphify_chunks.json
+.graphify_detect.json
+.graphify_uncached.txt
+graphify-out/
+firebase-debug.log
+*Firebase Admin SDK*.json
+rzp-key.csv
 
 # debug
 npm-debug.log*
@@ -44,3 +61,19 @@ next-env.d.ts
 
 # local docs
 SUBMISSION_COPY.md
+
+# flutter
+gig_suraksha_app/.dart_tool/
+gig_suraksha_app/.packages
+gig_suraksha_app/build/
+gig_suraksha_app/graphify-out/
+gig_suraksha_app/.flutter-plugins
+gig_suraksha_app/.flutter-plugins-dependencies
+gig_suraksha_app/ios/Pods/
+gig_suraksha_app/ios/.symlinks/
+gig_suraksha_app/android/.gradle/
+gig_suraksha_app/android/app/build/
+gig_suraksha_app/android/local.properties
+gig_suraksha_app/android/key.properties
+gig_suraksha_app/.idea/
+*.iml

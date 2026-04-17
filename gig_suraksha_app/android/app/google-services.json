@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "848699639432",
+    "project_id": "gigshuraksha",
+    "storage_bucket": "gigshuraksha.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:848699639432:android:0fc784815fadc003eb013d",
+        "android_client_info": {
+          "package_name": "dev.gigsuraksha.gigsuraksha_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNVbeos9wIwQorCv6nFQ77kbIiI4lV1qU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -7,12 +7,12 @@ from app.repositories.policies import PolicyRepository
 from app.repositories.workers import WorkerRepository
 from app.services.quote_service import generate_quote
 from app.utils.ids import generate_readable_id
-from app.utils.time import compute_week_window, utcnow
+from app.utils.time import compute_week_window, normalize_utc_datetime, utcnow
 
 
 def _coerce_valid_from(explicit_valid_from: datetime | None, feature_context: dict[str, Any] | None) -> datetime | None:
     if explicit_valid_from is not None:
-        return explicit_valid_from
+        return normalize_utc_datetime(explicit_valid_from)
     if not feature_context:
         return None
     reference_date = feature_context.get("reference_date")
@@ -21,7 +21,7 @@ def _coerce_valid_from(explicit_valid_from: datetime | None, feature_context: di
     if isinstance(reference_date, datetime):
         return reference_date
     try:
-        return datetime.fromisoformat(str(reference_date))
+        return normalize_utc_datetime(datetime.fromisoformat(str(reference_date)))
     except ValueError:
         return None
 
