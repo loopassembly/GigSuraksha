@@ -31,9 +31,9 @@ export default function Header() {
             <Link
               key={link.href}
               href={link.href}
-              className={`px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-[13px] font-bold rounded-md transition-colors ${
                 pathname === link.href
-                  ? 'bg-primary-light text-primary'
+                  ? 'bg-primary/10 text-primary-dark'
                   : 'text-text-secondary hover:text-text-primary hover:bg-border-light'
               }`}
             >
@@ -54,15 +54,15 @@ export default function Header() {
 
       {/* Mobile Nav */}
       {open && (
-        <nav className="md:hidden border-t border-border bg-surface px-4 py-2">
+        <nav className="md:hidden border-t border-border bg-surface px-4 py-2 shadow-lg">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={() => setOpen(false)}
-              className={`block px-3 py-2.5 text-[14px] font-medium rounded-md ${
+              className={`block px-3 py-2.5 text-[14px] font-bold rounded-md ${
                 pathname === link.href
-                  ? 'bg-primary-light text-primary'
+                  ? 'bg-primary/10 text-primary-dark'
                   : 'text-text-secondary hover:bg-border-light'
               }`}
             >

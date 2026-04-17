@@ -1,24 +1,27 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #F8FAFC;
+  --color-background: #FFFBF0;
   --color-surface: #FFFFFF;
-  --color-primary: #1D4ED8;
-  --color-primary-light: #DBEAFE;
-  --color-primary-dark: #1E3A8A;
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #475569;
-  --color-text-muted: #94A3B8;
-  --color-border: #E2E8F0;
-  --color-border-light: #F1F5F9;
+  --color-surface-faint: #FEF9E7;
+  --color-primary: #D97706;
+  --color-primary-light: #FCD34D;
+  --color-primary-dark: #B45309;
+  --color-brand-yellow: #F5B800;
+  --color-text-primary: #1C1208;
+  --color-text-secondary: #3D2B10;
+  --color-text-muted: #8F7657;
+  --color-border: #E8DDCA;
+  --color-border-light: #FEF9E7;
   --color-success: #059669;
   --color-success-light: #D1FAE5;
-  --color-warning: #D97706;
-  --color-warning-light: #FEF3C7;
+  --color-warning: #F5B800;
+  --color-warning-light: #FEF9E7;
   --color-danger: #DC2626;
   --color-danger-light: #FEE2E2;
-  --font-sans: "Segoe UI", "Helvetica Neue", system-ui, -apple-system, sans-serif;
-  --font-mono: "SFMono-Regular", "SF Mono", ui-monospace, monospace;
+  --font-sans: "Inter", "Outfit", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "ui-monospace", "SFMono-Regular", monospace;
+  --bg-brand-gradient: linear-gradient(135deg, #FCD34D 0%, #F5B800 50%, #D97706 100%);
 }
 
 * {
