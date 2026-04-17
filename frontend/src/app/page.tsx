@@ -1,5 +1,5 @@
-import Link from 'next/link';
-import Header from '@/components/Header';
+import Link from "next/link";
+import Header from "@/components/Header";
 import {
   Shield,
   CloudRain,
@@ -16,34 +16,54 @@ import {
   Cpu,
   Scale,
   CalendarCheck,
-} from 'lucide-react';
+} from "lucide-react";
 
 const triggers = [
-  { icon: CloudRain, label: 'Heavy Rainfall', desc: 'IMD-verified rainfall exceeding 64mm/hr' },
-  { icon: Waves, label: 'Waterlogging', desc: 'Road inundation blocking delivery routes' },
-  { icon: Thermometer, label: 'Extreme Heat', desc: 'Temperature crossing 42°C threshold' },
-  { icon: Wind, label: 'Severe AQI', desc: 'Air quality index exceeding 400' },
-  { icon: WifiOff, label: 'Platform Outage', desc: 'App-wide service disruption' },
-  { icon: Store, label: 'Dark Store Down', desc: 'Infrastructure closure or forced shutdown' },
+  {
+    icon: CloudRain,
+    label: "Heavy Rainfall",
+    desc: "IMD-verified rainfall exceeding 64mm/hr",
+  },
+  {
+    icon: Waves,
+    label: "Waterlogging",
+    desc: "Road inundation blocking delivery routes",
+  },
+  {
+    icon: Thermometer,
+    label: "Extreme Heat",
+    desc: "Temperature crossing 42°C threshold",
+  },
+  { icon: Wind, label: "Severe AQI", desc: "Air quality index exceeding 400" },
+  {
+    icon: WifiOff,
+    label: "Platform Outage",
+    desc: "App-wide service disruption",
+  },
+  {
+    icon: Store,
+    label: "Dark Store Down",
+    desc: "Infrastructure closure or forced shutdown",
+  },
 ];
 
 const steps = [
   {
-    step: '01',
-    title: 'Declare your earning window',
-    desc: 'Register your city, zone, platform, and the shift windows where you earn.',
+    step: "01",
+    title: "Declare your earning window",
+    desc: "Register your city, zone, platform, and the shift windows where you earn.",
     icon: Clock,
   },
   {
-    step: '02',
-    title: 'Get your weekly quote',
-    desc: 'Our risk engine scores your zone and shifts. You see the exact premium breakdown.',
+    step: "02",
+    title: "Get your weekly quote",
+    desc: "Our risk engine scores your zone and shifts. You see the exact premium breakdown.",
     icon: IndianRupee,
   },
   {
-    step: '03',
-    title: 'Automatic claim on disruption',
-    desc: 'When a verified disruption hits your zone during your shift, payout is calculated automatically.',
+    step: "03",
+    title: "Automatic claim on disruption",
+    desc: "When a verified disruption hits your zone during your shift, payout is calculated automatically.",
     icon: ShieldCheck,
   },
 ];
@@ -64,14 +84,14 @@ export default function LandingPage() {
                 </span>
               </div>
               <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-text-primary leading-tight tracking-tight">
-                Income protection for{' '}
+                Income protection for{" "}
                 <span className="text-primary">quick-commerce</span> delivery
                 partners
               </h1>
               <p className="mt-5 text-[16px] sm:text-[17px] text-text-secondary leading-relaxed max-w-xl">
-                When heavy rain, extreme heat, or platform outages reduce your working
-                hours, GigSuraksha protects your weekly earnings. Weekly plans starting
-                at ₹29.
+                When heavy rain, extreme heat, or platform outages reduce your
+                working hours, GigSuraksha protects your weekly earnings. Weekly
+                plans starting at ₹49.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3">
                 <Link
@@ -111,17 +131,17 @@ export default function LandingPage() {
                 The problem
               </h2>
               <p className="mt-4 text-[15px] text-text-secondary leading-relaxed">
-                Quick-commerce delivery partners earn within narrow time windows in
-                hyperlocal zones. A 3-hour rain event during the evening rush can cost a
-                rider ₹400–₹600 in lost earnings — roughly 8–10% of their weekly
-                income. These disruptions are frequent, measurable, and completely
-                outside the rider&apos;s control.
+                Quick-commerce delivery partners earn within narrow time windows
+                in hyperlocal zones. A 3-hour rain event during the evening rush
+                can cost a rider ₹400–₹600 in lost earnings — roughly 8–10% of
+                their weekly income. These disruptions are frequent, measurable,
+                and completely outside the rider&apos;s control.
               </p>
               <p className="mt-3 text-[15px] text-text-secondary leading-relaxed">
                 Traditional insurance does not address this. Health and accident
                 products exist, but no product protects the income that delivery
-                partners lose when external conditions prevent them from working their
-                declared shifts.
+                partners lose when external conditions prevent them from working
+                their declared shifts.
               </p>
             </div>
           </div>
@@ -134,8 +154,8 @@ export default function LandingPage() {
               How it works
             </h2>
             <p className="mt-3 text-[15px] text-text-secondary max-w-xl">
-              Three steps from registration to automatic payout. No paperwork, no
-              manual claim filing.
+              Three steps from registration to automatic payout. No paperwork,
+              no manual claim filing.
             </p>
             <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6">
               {steps.map((s) => (
@@ -170,20 +190,40 @@ export default function LandingPage() {
                   Transparent weekly pricing
                 </h2>
                 <p className="mt-4 text-[15px] text-text-secondary leading-relaxed">
-                  Your premium is calculated based on your zone risk, shift timing, and
-                  coverage level. Every component is visible — no hidden fees.
+                  Your premium is calculated based on your zone risk, shift
+                  timing, and coverage level. Every component is visible — no
+                  hidden fees.
                 </p>
                 <div className="mt-6 space-y-3">
                   <PriceRow label="Base Premium" value="₹29" />
-                  <PriceRow label="Zone Risk Loading" value="₹8" sub="Medium-risk zone" />
-                  <PriceRow label="Shift Exposure Loading" value="₹8" sub="Morning + Evening" />
-                  <PriceRow label="Coverage Factor" value="₹7" sub="Standard tier" />
-                  <PriceRow label="Safe Zone Discount" value="-₹3" sub="Applicable credit" isDiscount />
+                  <PriceRow
+                    label="Zone Risk Loading"
+                    value="₹8"
+                    sub="Medium-risk zone"
+                  />
+                  <PriceRow
+                    label="Shift Exposure Loading"
+                    value="₹8"
+                    sub="Morning + Evening"
+                  />
+                  <PriceRow
+                    label="Coverage Factor"
+                    value="₹7"
+                    sub="Standard tier"
+                  />
+                  <PriceRow
+                    label="Safe Zone Discount"
+                    value="-₹3"
+                    sub="Applicable credit"
+                    isDiscount
+                  />
                   <div className="border-t border-border pt-3 flex justify-between items-baseline">
                     <span className="text-[14px] font-semibold text-text-primary">
                       Weekly Premium
                     </span>
-                    <span className="text-[20px] font-bold text-primary">₹49/week</span>
+                    <span className="text-[20px] font-bold text-primary">
+                      ₹49/week
+                    </span>
                   </div>
                 </div>
               </div>
@@ -195,10 +235,10 @@ export default function LandingPage() {
                   Claims are calculated automatically using verified event data.
                 </p>
                 <div className="bg-background border border-border rounded-lg p-4 font-mono text-[13px] text-text-primary leading-relaxed">
-                  <p className="text-text-muted text-[11px] mb-2">{'// Payout calculation'}</p>
-                  <p>
-                    Payout = min(
+                  <p className="text-text-muted text-[11px] mb-2">
+                    {"// Payout calculation"}
                   </p>
+                  <p>Payout = min(</p>
                   <p className="pl-4">
                     HourlyIncome × AffectedHours × SeverityMultiplier,
                   </p>
@@ -208,15 +248,21 @@ export default function LandingPage() {
                 <div className="mt-4 space-y-2 text-[13px]">
                   <div className="flex justify-between text-text-secondary">
                     <span>Protected hourly income</span>
-                    <span className="font-medium text-text-primary">₹150/hr</span>
+                    <span className="font-medium text-text-primary">
+                      ₹150/hr
+                    </span>
                   </div>
                   <div className="flex justify-between text-text-secondary">
                     <span>Severity multiplier range</span>
-                    <span className="font-medium text-text-primary">0.4x – 1.0x</span>
+                    <span className="font-medium text-text-primary">
+                      0.4x – 1.0x
+                    </span>
                   </div>
                   <div className="flex justify-between text-text-secondary">
                     <span>Max weekly payout (Standard)</span>
-                    <span className="font-medium text-text-primary">₹3,500</span>
+                    <span className="font-medium text-text-primary">
+                      ₹3,500
+                    </span>
                   </div>
                 </div>
               </div>
@@ -267,29 +313,30 @@ export default function LandingPage() {
                   AI-assisted, rules-governed
                 </h2>
                 <p className="mt-4 text-[15px] text-text-secondary leading-relaxed">
-                  Machine learning models handle risk scoring, disruption classification,
-                  and anomaly detection. But payout decisions are always made by a
-                  deterministic rules engine — never by an LLM.
+                  Machine learning models handle risk scoring, disruption
+                  classification, and anomaly detection. But payout decisions
+                  are always made by a deterministic rules engine — never by an
+                  LLM.
                 </p>
                 <div className="mt-6 space-y-4">
                   <InfoRow
                     icon={Cpu}
                     title="AI handles"
                     items={[
-                      'Weekly risk scoring per zone',
-                      'Disruption event classification',
-                      'Anomaly and fraud signal detection',
-                      'Next-week exposure forecasting',
+                      "Weekly risk scoring per zone",
+                      "Disruption event classification",
+                      "Anomaly and fraud signal detection",
+                      "Next-week exposure forecasting",
                     ]}
                   />
                   <InfoRow
                     icon={Scale}
                     title="Rules engine handles"
                     items={[
-                      'Trigger validation and eligibility',
-                      'Payout calculation',
-                      'Duplicate claim detection',
-                      'Zone and shift overlap verification',
+                      "Trigger validation and eligibility",
+                      "Payout calculation",
+                      "Duplicate claim detection",
+                      "Zone and shift overlap verification",
                     ]}
                   />
                 </div>
@@ -299,15 +346,31 @@ export default function LandingPage() {
                   Fraud and validation
                 </h2>
                 <p className="mt-4 text-[15px] text-text-secondary leading-relaxed">
-                  Every claim is validated through multiple automated checks before
-                  payout is approved. Suspicious patterns are flagged for review.
+                  Every claim is validated through multiple automated checks
+                  before payout is approved. Suspicious patterns are flagged for
+                  review.
                 </p>
                 <div className="mt-6 bg-surface border border-border rounded-lg divide-y divide-border">
-                  <CheckRow label="Zone Match" desc="Rider zone matches event zone" />
-                  <CheckRow label="Shift Overlap" desc="Event overlaps with insured shift window" />
-                  <CheckRow label="Duplicate Check" desc="No prior claim for same event and period" />
-                  <CheckRow label="Event Validation" desc="Cross-verified against independent data source" />
-                  <CheckRow label="Anomaly Score" desc="ML-driven anomaly score is below threshold" />
+                  <CheckRow
+                    label="Zone Match"
+                    desc="Rider zone matches event zone"
+                  />
+                  <CheckRow
+                    label="Shift Overlap"
+                    desc="Event overlaps with insured shift window"
+                  />
+                  <CheckRow
+                    label="Duplicate Check"
+                    desc="No prior claim for same event and period"
+                  />
+                  <CheckRow
+                    label="Event Validation"
+                    desc="Cross-verified against independent data source"
+                  />
+                  <CheckRow
+                    label="Anomaly Score"
+                    desc="ML-driven anomaly score is below threshold"
+                  />
                 </div>
               </div>
             </div>
@@ -322,8 +385,8 @@ export default function LandingPage() {
               Start protecting your weekly income
             </h2>
             <p className="mt-3 text-[15px] text-text-secondary max-w-md mx-auto">
-              Set up your profile in 2 minutes. See your personalized risk score and
-              weekly premium instantly.
+              Set up your profile in 2 minutes. See your personalized risk score
+              and weekly premium instantly.
             </p>
             <div className="mt-8">
               <Link
@@ -369,13 +432,11 @@ function PriceRow({
     <div className="flex justify-between items-baseline">
       <div>
         <span className="text-[14px] text-text-primary">{label}</span>
-        {sub && (
-          <span className="text-[12px] text-text-muted ml-2">{sub}</span>
-        )}
+        {sub && <span className="text-[12px] text-text-muted ml-2">{sub}</span>}
       </div>
       <span
         className={`text-[14px] font-medium ${
-          isDiscount ? 'text-success' : 'text-text-primary'
+          isDiscount ? "text-success" : "text-text-primary"
         }`}
       >
         {value}
@@ -413,7 +474,10 @@ function InfoRow({
       </div>
       <ul className="space-y-1">
         {items.map((item) => (
-          <li key={item} className="text-[13px] text-text-secondary flex items-center gap-2">
+          <li
+            key={item}
+            className="text-[13px] text-text-secondary flex items-center gap-2"
+          >
             <span className="w-1 h-1 rounded-full bg-text-muted flex-shrink-0" />
             {item}
           </li>
