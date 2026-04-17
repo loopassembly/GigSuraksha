@@ -78,7 +78,7 @@ export default function LandingPage() {
           {/* Subtle Decorative Elements for Premium Feel */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/20 blur-3xl rounded-full -translate-y-1/3 translate-x-1/4 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-white/10 blur-3xl rounded-full translate-y-1/3 -translate-x-1/4 pointer-events-none" />
-          
+
           <div className="max-w-6xl mx-auto px-4 py-20 sm:py-28 relative z-10">
             <div className="max-w-2xl">
               <div className="flex items-center gap-2 mb-6">
@@ -116,7 +116,8 @@ export default function LandingPage() {
               </div>
               <div className="mt-10 flex flex-wrap items-center gap-6 text-[14px] font-bold text-text-secondary">
                 <span className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg border border-white/30">
-                  <CalendarCheck className="w-4.5 h-4.5 opacity-80" /> Weekly plans
+                  <CalendarCheck className="w-4.5 h-4.5 opacity-80" /> Weekly
+                  plans
                 </span>
                 <span className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg border border-white/30">
                   <MapPin className="w-4.5 h-4.5 opacity-80" /> Zone-specific
@@ -244,7 +245,10 @@ export default function LandingPage() {
                   <p className="text-primary-dark text-[12px] mb-3">
                     {"// Payout calculation"}
                   </p>
-                  <p>Payout = <span className="text-primary font-semibold">min</span>(</p>
+                  <p>
+                    Payout ={" "}
+                    <span className="text-primary font-semibold">min</span>(
+                  </p>
                   <p className="pl-5 text-text-secondary">
                     HourlyIncome × AffectedHours × SeverityMultiplier,
                   </p>
@@ -414,7 +418,7 @@ export default function LandingPage() {
           <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-[13px] text-text-muted">
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
-              <span>GigSuraksha — Phase 2</span>
+              <span>GigSuraksha — Phase 3</span>
             </div>
             <div>Guidewire DEVTrails 2026 Submission</div>
           </div>
@@ -481,7 +485,9 @@ function InfoRow({
         <div className="bg-primary/10 p-2 rounded-lg">
           <Icon className="w-4.5 h-4.5 text-primary" />
         </div>
-        <p className="text-[14px] font-bold text-text-primary uppercase tracking-wide">{title}</p>
+        <p className="text-[14px] font-bold text-text-primary uppercase tracking-wide">
+          {title}
+        </p>
       </div>
       <ul className="space-y-2">
         {items.map((item) => (
