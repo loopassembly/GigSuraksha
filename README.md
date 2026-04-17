@@ -24,6 +24,7 @@
 
 ## Pitch Deck
 - Pitch Deck Link: [https://canva.link/0xizo8okzt445dt](https://canva.link/0xizo8okzt445dt)
+- PDF Link - [https://drive.google.com/file/d/1_e23iOv894RX53saiuEt_S8ILZZs0ZP9/view?usp=sharing](https://drive.google.com/file/d/1_e23iOv894RX53saiuEt_S8ILZZs0ZP9/view?usp=sharing)
 
 ## Demo Video
 [![Watch the video](https://img.youtube.com/vi/9FJZ7M_5NVo/0.jpg)](https://www.youtube.com/watch?v=9FJZ7M_5NVo)
