@@ -285,7 +285,7 @@ python3 -m src.pipeline --start-date 2023-01-01 --end-date 2026-03-29
 
 - Worker/Admin web: [gigsuraksha-beta.web.app](https://gigsuraksha-beta.web.app/)
 - Backend API: [gigsuraksha-backend.fly.dev](https://gigsuraksha-backend.fly.dev)
-- Demo video: [YouTube walkthrough](https://youtu.be/AqH0dfiZbP4)
+- Demo video: [YouTube walkthrough](https://www.youtube.com/watch?v=9FJZ7M_5NVo)
 
 ## What Judges Should Remember
 
